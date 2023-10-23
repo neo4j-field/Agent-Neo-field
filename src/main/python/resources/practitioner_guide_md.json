@@ -1,0 +1,21 @@
+{
+    "practitioner_guide_md": [
+        "https://github.com/danb-neo4j/gds-guide/blob/main/README.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/gds-resources.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/graph-data-modeling.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/graph-eda.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/graphs-llms.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/neo4j-resources.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/usecase-specific.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/algorithms/README.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/algorithms/gds_centrality.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/algorithms/gds_community.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/algorithms/gds_pathfinding.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/algorithms/gds_similarity.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/embeddings/README.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/embeddings/fastrp.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/embeddings/graphSAGE.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/embeddings/hashGNN.md",
+        "https://github.com/danb-neo4j/gds-guide/blob/main/embeddings/node2vec.md"
+    ]
+}
