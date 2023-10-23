@@ -17,11 +17,6 @@ from langchain.memory import ConversationSummaryBufferMemory
 
 # from langchain.llms import VertexAI
 
-from langchain.prompts import (
-    FewShotChatMessagePromptTemplate,
-    ChatPromptTemplate,
-)
-
 import time
 import uuid
 
