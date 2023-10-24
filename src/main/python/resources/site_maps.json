@@ -1,11 +1,11 @@
 {
     "sitemap_urls": [
-        'https://neo4j.com/docs/graph-data-science/current/sitemap.xml',  # core GDS
-        'https://neo4j.com/docs/graph-data-science-client/current/sitemap.xml',  # GDS client
-        'https://neo4j.com/docs/python-manual/current/sitemap.xml',  # Neo4j python client
-        'https://neo4j.com/docs/cypher-manual/current/sitemap.xml',  # Cypher manual
-        'https://neo4j.com/docs/apoc/current/sitemap.xml',  # APOC manual
-        'https://neo4j.com/docs/aura/sitemap.xml',  # Aura DB and DS
-        'https://neo4j.com/docs/operations-manual/5/sitemap.xml'  # Neo4j5
+        "https://neo4j.com/docs/graph-data-science/current/sitemap.xm",
+        "https://neo4j.com/docs/graph-data-science-client/current/sitemap.xml",
+        "https://neo4j.com/docs/python-manual/current/sitemap.xml",
+        "https://neo4j.com/docs/cypher-manual/current/sitemap.xml",
+        "https://neo4j.com/docs/apoc/current/sitemap.xml",
+        "https://neo4j.com/docs/aura/sitemap.xml",
+        "https://neo4j.com/docs/operations-manual/5/sitemap.xml"
     ]
 }

@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict
+from typing import List, Callable, Dict,Any
 import requests
 from bs4 import BeautifulSoup
 from typing import List
@@ -15,7 +15,7 @@ import os
 
 class Fetcher:
     def __init__(self, gcp_client: storage.Client = None):
-        self.gcp_client = gcp_client or storage.Client()
+        self.client = gcp_client or storage.Client()
         self.service_account = os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
 
     def get_sitemap_urls(self) -> List[str]:
