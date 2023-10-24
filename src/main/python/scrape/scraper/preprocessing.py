@@ -32,3 +32,13 @@ def concatenate_unique_ordered(*lists:List) -> List:
             seen.add(item)
             result.append(item)
     return result
+
+
+def extract_list_from_json(json_data: dict, key: str = None) -> list:
+    if key:
+        return json_data.get(key, [])
+    elif len(json_data) == 1:
+        single_key = next(iter(json_data.keys()))
+        if isinstance(json_data[single_key], list):
+            return json_data[single_key]
+    return []

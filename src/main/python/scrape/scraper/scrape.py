@@ -18,15 +18,15 @@ class Fetcher:
         self.client = gcp_client or storage.Client()
         self.service_account = os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
 
-    def get_sitemap_urls(self) -> List[str]:
+    def get_sitemap_urls(self) -> Dict[str, Any]:
         bucket_name = os.environ.get('GCP_SITEMAPS_BUCKET')
         return self._read_from_gcp(bucket_name)
 
-    def get_practitioner_guide_md(self) -> List[str]:
+    def get_practitioner_guide_md(self) -> Dict[str, Any]:
         bucket_name = os.environ.get('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')
         return self._read_from_gcp(bucket_name)
 
-    def get_other_articles(self) -> List[str]:
+    def get_other_articles(self) -> Dict[str, Any]:
         bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
         return self._read_from_gcp(bucket_name)
 
