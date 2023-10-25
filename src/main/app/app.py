@@ -6,7 +6,7 @@ from streamlit_feedback import streamlit_feedback
 import time
 import uuid
 
-llm_avatar = 'images/neo4j_icon_white.png'
+llm_avatar = 'resources/images/neo4j_icon_white.png'
 user_avatar = '👤'
 
 INITIAL_MESSAGE = [
