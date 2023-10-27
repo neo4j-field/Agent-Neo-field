@@ -1,7 +1,7 @@
 import os
-from scrape import Fetcher
+from scrape import Fetcher, WebContentChunker
 from google.cloud import storage
-from scrape import parse_sitemaps_tolist,parse_sitemap,concatenate_unique_ordered,extract_list_from_json
+from scrape import parse_sitemaps_tolist,extract_list_from_json
 
 if __name__ == '__main__':
     service_account_key = os.getenv('GCP_SERVICE_ACCOUNT_KEY_PATH')
@@ -17,9 +17,29 @@ if __name__ == '__main__':
     practitioners_guides_json = fetch.get_practitioner_guide_md()
 
     #preprocessing
-    sitemaps_list = extract_list_from_json(sitemaps_json)
     other_articles_list = extract_list_from_json(other_articles_json)
     practitioners_list = extract_list_from_json(practitioners_guides_json)
+    sitemaps_list = extract_list_from_json(sitemaps_json)
+
+    parsed_sitemaps_list = parse_sitemaps_tolist(sitemaps_list)
+
+    all_assets = fetch.concatenate_unique_ordered(parsed_sitemaps_list,practitioners_list,other_articles_list)
+
+    #Chunk
+    chunker = WebContentChunker()
+
+    chunker.chunk_documents(all_assets)
+
+    urls = chunker.chunk_urls()
+
+    text = chunker.chunk_texts()
+
+    print(urls)
+    print(text)
+
+
+
+
 
 
 

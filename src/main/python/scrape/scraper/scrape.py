@@ -30,14 +30,6 @@ class Fetcher:
         bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
         return self._read_from_gcp(bucket_name)
 
-    def concatenate_unique_ordered(*lists: List) -> List:
-        seen = set()
-        result = []
-        for item in chain(*lists):
-            if item not in seen:
-                seen.add(item)
-                result.append(item)
-        return result
 
     def _read_from_gcp(self, bucket_name: str, blob_name: str = None) -> Dict[str, Any]:
         """Read data from a GCP bucket and return it as a list of strings."""
@@ -59,15 +51,21 @@ class Fetcher:
         data = json.loads(content)
         return data
 
+    @staticmethod
+    def concatenate_unique_ordered(self,*lists: List) -> List:
+        seen = set()
+        result = []
+        for item in chain(*lists):
+            if item not in seen:
+                seen.add(item)
+                result.append(item)
+        return result
+
 
 
 
 class WebContentChunker:
     def __init__(self):
-        self._site_maps = get_sitemap_urls()
-        self._practitioner_guides = get_practitioner_guide_md()
-        self._other_articles = get_other_articles()
-        self._docs = concatenate_unique_ordered(self._site_maps, self._practitioner_guides, self._other_articles)
         self._chunked_documents = None
 
     @property
