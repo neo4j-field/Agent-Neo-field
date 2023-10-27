@@ -12,18 +12,21 @@ class TestFetcher(unittest.TestCase):
         cls.fetcher = Fetcher(cls.client)
 
     def test_get_sitemap_urls(self):
-        data = self.fetcher.get_sitemap_urls()
+        path = os.getenv('GCP_SITEMAPS_BUCKET')
+        data = self.fetcher.get_sitemap_urls(path)
         # Check if the returned data is a dictionary and has expected keys or values.
         self.assertIsInstance(data, dict)
         # Add more assertions based on expected content
 
     def test_get_practitioner_guide_md(self):
-        data = self.fetcher.get_practitioner_guide_md()
+        path = os.getenv('GCP_PRACTITIONERS_GUIDE_SITE_BUCKET')
+        data = self.fetcher.get_practitioner_guide_md(path)
         self.assertIsInstance(data, dict)
         # Add more assertions based on expected content
 
     def test_get_other_articles(self):
-        data = self.fetcher.get_other_articles()
+        path = os.getenv('GCP_SITEMAPS_BUCKET')
+        data = self.fetcher.get_other_articles(path)
         self.assertIsInstance(data, dict)
         # Add more assertions based on expected content
 

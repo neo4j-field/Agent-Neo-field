@@ -62,11 +62,9 @@ class Fetcher:
         return result
 
 
-
-
 class WebContentChunker:
     def __init__(self):
-        self._chunked_documents = None
+        self._chunked_documents = []
 
     @property
     def chunk_texts(self) -> List[str]:
@@ -84,29 +82,51 @@ class WebContentChunker:
         """
         if not self._chunked_documents:
             raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
-        return [chunk.metadata['source'] for chunk in self._chunked_documents]
+        return [chunk.metadata.get('source', '') for chunk in self._chunked_documents]
 
-    def scrape_sites_into_langchain_docs(self) -> List[Document]:
-        documents = None
+    @property
+    def chunks_as_dict(self) -> Dict[str, str]:
+        """
+        Returns a dictionary mapping source URLs to their corresponding page content.
+        """
+        if not self._chunked_documents:
+            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
+
+        # Combine URLs and texts into a dictionary
+        return dict(zip(self.chunk_urls, self.chunk_texts))
+
+
+    def clean_chunk_texts(self, cleaning_functions: List[Callable[[str], str]]) -> None:
+        """
+        Cleans the chunk_texts using the provided list of cleaning functions.
+
+        :param cleaning_functions: List of functions that each take a string and return a cleaned string.
+        """
+        for i, text in enumerate(self._chunked_documents):
+            for func in cleaning_functions:
+                text.page_content = func(text.page_content)
+            self._chunked_documents[i] = text
+
+    def scrape_sites_into_langchain_docs(self, resources: List[str]) -> List[Document]:
         try:
-            loader = UnstructuredURLLoader(self._docs)
-            documents = loader.load()
+            loader = UnstructuredURLLoader(urls=resources)
+            return loader.load()
         except Exception as e:
             print(f"Error loading documents from URLs: {e}")
-        return documents
+            return []
 
-    def chunk_documents(self, splitter: Callable[[List[Document]], List[Document]] = None) -> List[Document]:
+    def chunk_documents(self, urls: List[str] = None,
+                        splitter: Callable[[List[Document]], List[Document]] = None) -> None:
         if splitter is None:
             splitter = CharacterTextSplitter(
                 separator="\n",
-                chunk_size=1024,  # ref https://www.pinecone.io/learn/chunking-strategies/
-                chunk_overlap=128  # set approx 15% overlap between chunked documents
+                chunk_size=1024,
+                chunk_overlap=128
             )
 
-        documents = self.scrape_sites_into_langchain_docs()
-        split_documents = splitter.split_documents(documents)
-        return split_documents
+        if urls:
+            documents = self.scrape_sites_into_langchain_docs(urls)
+            self._chunked_documents.extend(splitter.split_documents(documents))
 
-    def __str__(self):
-        doc_strings = [str(doc) for doc in self._docs]
-        return "\n".join(["ScrapeLangChain Documents:"] + doc_strings)
+    def __str__(self) -> str:
+        return "\n".join([f"Document: {doc}" for doc in self._chunked_documents])

@@ -24,6 +24,13 @@ def parse_sitemaps_tolist(sitemaps: List[str]) -> List[str]:
     return neo4j_doc_sites
 
 
+def remove_newlines(text: str) -> str:
+    return text.replace('\n\n', ' ').replace('\n', ' ')
+
+def remove_unwanted_phrase(text: str) -> str:
+    return text.replace('Was this page helpful?', '')
+
+
 def concatenate_unique_ordered(*lists:List) -> List:
     seen = set()
     result = []

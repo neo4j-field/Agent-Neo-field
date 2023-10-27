@@ -23,19 +23,18 @@ if __name__ == '__main__':
 
     parsed_sitemaps_list = parse_sitemaps_tolist(sitemaps_list)
 
+
     all_assets = fetch.concatenate_unique_ordered(parsed_sitemaps_list,practitioners_list,other_articles_list)
 
     #Chunk
     chunker = WebContentChunker()
 
-    chunker.chunk_documents(all_assets)
+    chunker.chunk_documents(urls=all_assets)
+    chunked_dict = chunker.chunks_as_dict
+    print(chunked_dict)
 
-    urls = chunker.chunk_urls()
 
-    text = chunker.chunk_texts()
 
-    print(urls)
-    print(text)
 
 
 
