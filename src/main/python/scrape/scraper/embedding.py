@@ -4,28 +4,25 @@ from time import time
 
 
 class EmbeddingService:
-    def __init__(self, embedding_provider: Embeddings, max_retries: int = 5, retry_delay: int = 5,
-                 backoff_factor: int = 2) -> None:
-        self.max_retries: int = max_retries
-        self.retry_delay: int = retry_delay
-        self.backoff_factor: int = backoff_factor
-        self.embedding_provider: Embeddings = embedding_provider
+    def __init__(self, embedding_provider) -> None:
+        self.embedding_provider = embedding_provider
 
-    def handle_quota_errors(self, func: Callable[..., List[float]]) -> Callable[..., List[float]]:
-        def decorator(*args, **kwargs) -> List[float]:
+    def handle_quota_errors(func):
+        def wrapper(self, *args, **kwargs):
+            max_retries, retry_delay, backoff_factor = 5, 5, 2
             retries = 0
             while True:
                 try:
-                    return func(*args, **kwargs)
+                    # Call the function with the provided args and kwargs
+                    return func(self, *args, **kwargs)
                 except Exception as e:
-                    if retries >= self.max_retries:
+                    if retries >= max_retries:
                         raise
                     retries += 1
-                    wait = self.retry_delay * (self.backoff_factor ** retries)
+                    wait = retry_delay * (backoff_factor ** retries)
                     print(f"Retrying after error: {e}, waiting for {wait} seconds")
                     time.sleep(wait)
-
-        return decorator
+        return wrapper
 
     @handle_quota_errors
     def generate_embedding(self, chunk_text: str) -> List[float]:

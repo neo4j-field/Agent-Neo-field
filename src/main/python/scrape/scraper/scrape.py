@@ -1,4 +1,4 @@
-from typing import List, Callable, Dict,Any
+from typing import List, Callable, Dict, Any
 import requests
 from bs4 import BeautifulSoup
 from typing import List
@@ -11,6 +11,7 @@ from langchain.embeddings import VertexAIEmbeddings
 from google.cloud import storage
 import json
 import os
+import time
 
 
 class Fetcher:
@@ -29,7 +30,6 @@ class Fetcher:
     def get_other_articles(self) -> Dict[str, Any]:
         bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
         return self._read_from_gcp(bucket_name)
-
 
     def _read_from_gcp(self, bucket_name: str, blob_name: str = None) -> Dict[str, Any]:
         """Read data from a GCP bucket and return it as a list of strings."""
@@ -50,6 +50,16 @@ class Fetcher:
         content = blob.download_as_text()
         data = json.loads(content)
         return data
+
+    @staticmethod
+    def concatenate_unique_ordered(*lists: List) -> List:
+        seen = set()
+        result = []
+        for item in chain(*lists):
+            if item not in seen:
+                seen.add(item)
+                result.append(item)
+        return result
 
 
 class WebContentChunker:
@@ -75,7 +85,7 @@ class WebContentChunker:
         if not self._chunked_documents:
             raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
 
-    def scrape_sites_into_langchain_docs(self, resources: List[str]) -> List[Document]:
+    def _scrape_sites_into_langchain_docs(self, resources: List[str]) -> List[Document]:
         try:
             loader = UnstructuredURLLoader(urls=resources)
             return loader.load()
@@ -87,7 +97,8 @@ class WebContentChunker:
                            splitter: Callable[[List[Document]], List[Document]]) -> List[Document]:
         return splitter.split_documents(documents)
 
-    def _clean_chunked_documents(self, chunked_docs: List[Document], cleaning_functions: List[Callable[[str], str]]) -> List[Document]:
+    def _clean_chunked_documents(self, chunked_docs: List[Document], cleaning_functions: List[Callable[[str], str]]) -> \
+    List[Document]:
         for i, doc in enumerate(chunked_docs):
             for func in cleaning_functions:
                 doc.page_content = func(doc.page_content)
@@ -98,14 +109,35 @@ class WebContentChunker:
                         splitter: Callable[[List[Document]], List[Document]] = None,
                         cleaning_functions: List[Callable[[str], str]] = None) -> None:
 
-        if splitter is None:
-            splitter = CharacterTextSplitter(separator="\n", chunk_size=1024, chunk_overlap=128)
+        chunking_start_time = time.time()  # Start timing the chunking process
 
-        documents = self.scrape_sites_into_langchain_docs(urls)
+        if splitter is None:
+            splitter = CharacterTextSplitter(
+                separator="\n",
+                chunk_size=1024,
+                chunk_overlap=128)
+
+        # Start scraping
+        documents = self._scrape_sites_into_langchain_docs(urls)
+
+        # After scraping
+        scraping_end_time = time.time()
+        print(f"Scraping Time: {scraping_end_time - chunking_start_time} seconds")
+
+        # Start splitting
         chunked_docs = self._split_into_chunks(documents, splitter)
 
+        # After splitting
+        splitting_end_time = time.time()
+        print(f"Splitting Time: {splitting_end_time - scraping_end_time} seconds")
+
         if cleaning_functions:
+            # Start cleaning
             chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
+
+            # After cleaning
+            cleaning_end_time = time.time()
+            print(f"Cleaning Time: {cleaning_end_time - splitting_end_time} seconds")
 
         self._chunked_documents.extend(chunked_docs)
 

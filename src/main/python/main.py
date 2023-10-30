@@ -1,10 +1,13 @@
 import os
-from scrape import Fetcher, WebContentChunker
+import time  # Import the time module
 from google.cloud import storage
+from scrape import Fetcher, WebContentChunker
 from scrape import parse_sitemaps_tolist, extract_list_from_json, remove_newlines, remove_unwanted_phrase, \
     concatenate_unique_ordered
 
 if __name__ == '__main__':
+    start_time = time.time()  # Start timing
+
     service_account_key = os.getenv('GCP_SERVICE_ACCOUNT_KEY_PATH')
     sitemaps_bucket = os.getenv('GCP_SITEMAPS_BUCKET')
     practitioners_bucket = os.getenv('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')
@@ -23,11 +26,33 @@ if __name__ == '__main__':
 
     parsed_sitemaps_list = parse_sitemaps_tolist(sitemaps_list)
 
-    all_assets = concatenate_unique_ordered(parsed_sitemaps_list, practitioners_list, other_articles_list)
+    all_assets = Fetcher.concatenate_unique_ordered(parsed_sitemaps_list, practitioners_list, other_articles_list)
+
+    # Time before chunking
+    chunking_start_time = time.time()
 
     chunker = WebContentChunker()
 
     clean_fn = [remove_newlines, remove_unwanted_phrase]
 
-    chunker.chunk_documents(urls=all_assets, cleaning_functions=clean_fn)
-    chunked_dict = chunker.chunks_as_dict
+    chunker.chunk_documents(urls=all_assets)
+
+    # Time after chunking
+    chunking_end_time = time.time()
+
+    data = chunker.chunks_as_dict
+
+
+
+    end_time = time.time()  # End timing
+
+    print(f"Total Execution Time: {end_time - start_time} seconds")
+    print(f"Chunking Time: {chunking_end_time - chunking_start_time} seconds")
+
+
+    for idx, value in data.items():
+        print('key:' + idx ,  'value:' + value)
+
+
+
+
