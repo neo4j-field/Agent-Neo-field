@@ -5,6 +5,15 @@ from credentials import validate_openai_key
 from streamlit_feedback import streamlit_feedback
 import time
 import uuid
+import os
+
+# Usually, these values will be the same for both projects
+os.environ["LANGCHAIN_TRACING_V2"] = "true"
+os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
+# Replace "YOUR API KEY" with the API key you created
+os.environ["LANGCHAIN_API_KEY"] = st.secrets['langsmith_api_key']
+# Make sure to use the correct project name
+os.environ["LANGCHAIN_PROJECT"] = "agent-neo"
 
 llm_avatar = 'resources/images/neo4j_icon_white.png'
 user_avatar = '👤'
@@ -34,6 +43,9 @@ RESET_MESSAGE = [
 with open("ui/sidebar.md", "r") as sidebar_file:
     sidebar_content = sidebar_file.read()
 
+with open("ui/bloglist.md", "r") as sidebar_file:
+    blog_list = sidebar_file.read()
+
 try:
     st.markdown("""
     <style>
@@ -45,12 +57,8 @@ try:
     """, unsafe_allow_html=True)
 
     st.title("Agent Neo")
-    st.sidebar.markdown("# Agent Neo")
+    st.sidebar.write("# Agent Neo", 1.0)
     st.sidebar.markdown("Read more: [The Practical Benefits to Grounding an LLM in a Knowledge Graph](https://medium.com/@bukowski.daniel/the-practical-benefits-to-grounding-an-llm-in-a-knowledge-graph-919918eb493)")
-
-    # check for openai key
-    # if 'user_openai_key_validated' not in st.session_state or not st.session_state['user_openai_key_validated']:
-    #     st.session_state['user_openai_key'] = st.text_input('Please enter OpenAI key to use Agent Neo')
 
     # init session if first visit
     if len(st.session_state.keys()) == 0:
@@ -59,38 +67,47 @@ try:
     if 'session_id' not in st.session_state:
         st.session_state['session_id'] = 's-'+str(uuid.uuid4())
 
-    # give options for llm
-    llm = st.sidebar.radio("Select LLM", ("chat-bison 2k", "chat-bison 32k", "GPT-4 8k", "GPT-4 32k"), horizontal=True, index=2, 
-                           help="""
-                                Selecting a different LLM will reset the chat. Default is GPT-4 8k.
-                                """)
+    with st.sidebar.expander("Parameters"):
+        # give options for llm
+        llm = st.radio("Select LLM", ("chat-bison 2k", "chat-bison 32k", "GPT-4 8k", "GPT-4 32k"), index=2, 
+                            help="""
+                                    Selecting a different LLM will reset the chat. Default is GPT-4 8k.
+                                    """)
+        
+        # select temperature
+        temperature = st.slider("Select Temperature", 0.0, 1.0, 0.7, step=0.05, 
+                                        help='''
+                                            Temperature sets the amount of "creativity" the LLM has 
+                                            in developing its responses. Chat must be reset to have an effect.
+                                            ''')
+        
+        # Add slider to select the number of documents to use as context
+        use_context = st.toggle('Use Grounding?', value=True, help='Use the Neo4j knowledge graph to ground Agent Neo.')
+        if use_context:
+            st.session_state['num_documents_for_context'] = st.slider('Select Number of Context Documents', 1, 10, 10, 
+                                                                        help='''
+                                                                                More documents could provide better context for a response 
+                                                                                at the cost of longer prompts and processing time. This
+                                                                                value can vary throughout a conversation.
+                                                                                ''',
+                                                                                disabled=not use_context)
+        else:
+            st.session_state['num_documents_for_context'] = 0
     
-    # select temperature
-    temperature = st.sidebar.slider("Select Temperature", 0.0, 1.0, 0.7, step=0.05, 
-                                    help='''
-                                         Temperature sets the amount of "creativity" the LLM has 
-                                         in developing its responses. Chat must be reset to have an effect.
-                                         ''')
-    
-    # Add slider to select the number of documents to use as context
-    use_context = st.sidebar.toggle('Use Grounding?', value=True, help='Use the Neo4j knowledge graph to ground Agent Neo.')
-    if use_context:
-        st.session_state['num_documents_for_context'] = st.sidebar.slider('Select Number of Context Documents', 1, 10, 10, 
-                                                                      help='''
-                                                                            More documents could provide better context for a response 
-                                                                            at the cost of longer prompts and processing time. This
-                                                                            value can vary throughout a conversation.
-                                                                            ''',
-                                                                            disabled=not use_context)
-    else:
-        st.session_state['num_documents_for_context'] = 0
+    # display app description in sidebar
+    with st.sidebar.expander("Description"):
+        st.markdown(sidebar_content)
+
+    with st.sidebar.expander("Read More"):
+        st.markdown(blog_list)
 
     # Add a reset button
-    st.sidebar.caption('<p class="sidebar-font">Reset Chat & Memory</p>', unsafe_allow_html=True)
-    if st.sidebar.button("Reset", type="primary", 
-                         help='''
-                              Effectively reset the session. A new Neo4j driver is created and the LLM history is cleared.
-                              '''):
+    # st.sidebar.caption('<p class="sidebar-font">Reset Chat & Memory</p>', unsafe_allow_html=True)
+    if st.sidebar.button("Reset Conversation", type="secondary", 
+                        #  help='''
+                        #       Effectively reset the session. A new Neo4j driver is created and the LLM history is cleared.
+                        #       ''',
+                        use_container_width=True):
         for key in st.session_state.keys():
             if key != 'session_id':
                 del st.session_state[key]
@@ -98,19 +115,7 @@ try:
         st.session_state["history"] = []
         st.session_state['temperature'] = temperature
 
-    # Add buttons to rate most recent LLM repsonse
-    # if 'communicator' in st.session_state:
-    #     st.sidebar.write('<p class="sidebar-font">Rate Recent LLM Response</p>', unsafe_allow_html=True)
-    #     with st.sidebar:
-    #         good_col, bad_col = st.columns(2)
-    #         with good_col:
-    #             good = st.button(':+1:', on_click=st.session_state['communicator'].rate_message, kwargs={'rating': 'Good'}, disabled=False, key='good_sidebar')
-    #         with bad_col:
-    #             bad = st.button(':-1:', on_click=st.session_state['communicator'].rate_message, kwargs={'rating': 'Bad'}, disabled=False, key='bad_sidebar')
-
-    # display app description in sidebar
-    st.sidebar.markdown(sidebar_content)
-
+    
     # init Communicator object
     if 'communicator' not in st.session_state:
         st.session_state['communicator'] = Communicator()
@@ -192,6 +197,7 @@ try:
             key='rating_options'+str(len(st.session_state['messages']))
         )
 
+    
 except URLError as e:
     st.error(
         """

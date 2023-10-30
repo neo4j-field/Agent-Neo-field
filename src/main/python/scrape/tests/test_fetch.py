@@ -1,7 +1,7 @@
 import os
 import unittest
 from google.cloud import storage
-from scrape.scraper.scape import Fetcher  # Ensure you've imported Fetcher from wherever it's defined
+from scrape.scraper.scrape import Fetcher  # Ensure you've imported Fetcher from wherever it's defined
 
 class TestFetcher(unittest.TestCase):
 
