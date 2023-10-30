@@ -51,16 +51,6 @@ class Fetcher:
         data = json.loads(content)
         return data
 
-    @staticmethod
-    def concatenate_unique_ordered(self,*lists: List) -> List:
-        seen = set()
-        result = []
-        for item in chain(*lists):
-            if item not in seen:
-                seen.add(item)
-                result.append(item)
-        return result
-
 
 class WebContentChunker:
     def __init__(self):
@@ -68,44 +58,22 @@ class WebContentChunker:
 
     @property
     def chunk_texts(self) -> List[str]:
-        """
-        Returns the list of page_content from all chunked documents.
-        """
-        if not self._chunked_documents:
-            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
+        self._assert_documents_chunked()
         return [chunk.page_content for chunk in self._chunked_documents]
 
     @property
     def chunk_urls(self) -> List[str]:
-        """
-        Returns the list of source URLs from the metadata of all chunked documents.
-        """
-        if not self._chunked_documents:
-            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
+        self._assert_documents_chunked()
         return [chunk.metadata.get('source', '') for chunk in self._chunked_documents]
 
     @property
     def chunks_as_dict(self) -> Dict[str, str]:
-        """
-        Returns a dictionary mapping source URLs to their corresponding page content.
-        """
-        if not self._chunked_documents:
-            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
-
-        # Combine URLs and texts into a dictionary
+        self._assert_documents_chunked()
         return dict(zip(self.chunk_urls, self.chunk_texts))
 
-
-    def clean_chunk_texts(self, cleaning_functions: List[Callable[[str], str]]) -> None:
-        """
-        Cleans the chunk_texts using the provided list of cleaning functions.
-
-        :param cleaning_functions: List of functions that each take a string and return a cleaned string.
-        """
-        for i, text in enumerate(self._chunked_documents):
-            for func in cleaning_functions:
-                text.page_content = func(text.page_content)
-            self._chunked_documents[i] = text
+    def _assert_documents_chunked(self):
+        if not self._chunked_documents:
+            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
 
     def scrape_sites_into_langchain_docs(self, resources: List[str]) -> List[Document]:
         try:
@@ -115,18 +83,31 @@ class WebContentChunker:
             print(f"Error loading documents from URLs: {e}")
             return []
 
-    def chunk_documents(self, urls: List[str] = None,
-                        splitter: Callable[[List[Document]], List[Document]] = None) -> None:
-        if splitter is None:
-            splitter = CharacterTextSplitter(
-                separator="\n",
-                chunk_size=1024,
-                chunk_overlap=128
-            )
+    def _split_into_chunks(self, documents: List[Document],
+                           splitter: Callable[[List[Document]], List[Document]]) -> List[Document]:
+        return splitter.split_documents(documents)
 
-        if urls:
-            documents = self.scrape_sites_into_langchain_docs(urls)
-            self._chunked_documents.extend(splitter.split_documents(documents))
+    def _clean_chunked_documents(self, chunked_docs: List[Document], cleaning_functions: List[Callable[[str], str]]) -> List[Document]:
+        for i, doc in enumerate(chunked_docs):
+            for func in cleaning_functions:
+                doc.page_content = func(doc.page_content)
+            chunked_docs[i] = doc
+        return chunked_docs
+
+    def chunk_documents(self, urls: List[str],
+                        splitter: Callable[[List[Document]], List[Document]] = None,
+                        cleaning_functions: List[Callable[[str], str]] = None) -> None:
+
+        if splitter is None:
+            splitter = CharacterTextSplitter(separator="\n", chunk_size=1024, chunk_overlap=128)
+
+        documents = self.scrape_sites_into_langchain_docs(urls)
+        chunked_docs = self._split_into_chunks(documents, splitter)
+
+        if cleaning_functions:
+            chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
+
+        self._chunked_documents.extend(chunked_docs)
 
     def __str__(self) -> str:
         return "\n".join([f"Document: {doc}" for doc in self._chunked_documents])

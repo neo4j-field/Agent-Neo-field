@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from typing import List
 from itertools import chain
 
-#TODO: Pull these into a seperate module or encapsulate them in the ScrapeLangChain
+
 def parse_sitemap(sitemap: str) -> List[str]:
     response = requests.get(sitemap)
     soup = BeautifulSoup(response.content, "xml")
@@ -12,7 +12,6 @@ def parse_sitemap(sitemap: str) -> List[str]:
 
 
 def parse_sitemaps_tolist(sitemaps: List[str]) -> List[str]:
-
     neo4j_doc_sites = []
 
     for sitemap in sitemaps:

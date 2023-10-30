@@ -8,6 +8,10 @@ ENV GCP_OTHER_ARTICLES_BUCKET=agent-neo4j-otherarticles
 ENV PYTHONPATH=/app/python_modules
 ENV GCP_SERVICE_ACCOUNT_KEY_PATH=/app/gcp_service_account.json
 
+# Install system dependencies for libmagic
+RUN apt-get update && \
+    apt-get install -y libmagic1 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set the working directory inside the container
 WORKDIR /app
