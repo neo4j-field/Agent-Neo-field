@@ -31,11 +31,6 @@ class TestFetcher(unittest.TestCase):
         # Add more assertions based on expected content
 
 
-    @unittest.skip
-    def test_concatenate_unique_ordered(self):
-        result = self.fetcher.concatenate_unique_ordered([1, 2, 3], [3, 4, 5], [5, 6])
-        self.assertEqual(result, [1, 2, 3, 4, 5, 6])
-
 
 
 if __name__ == '__main__':
