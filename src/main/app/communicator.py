@@ -14,6 +14,8 @@ from vertexai.preview.language_models import TextEmbeddingModel
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
+from langchain.prompts.prompt import PromptTemplate
+
 
 # from langchain.llms import VertexAI
 
@@ -235,6 +237,10 @@ class Communicator:
         prevMessId = st.session_state['latest_message_id']
         messId = 'llm-'+str(uuid.uuid4())
 
+        mem = st.session_state['llm_memory'].moving_summary_buffer
+
+        print('mem: ', type(mem), mem)
+
         def log(tx):
             tx.run("""
             match (pm:Message {id: $prevMessId})
@@ -244,7 +250,9 @@ class Communicator:
                 m.numDocs = $numDocs,
                 m.vectorIndexSearch = true,
                 m.prompt = $prompt,
-                m.public = true
+                m.public = true,
+                m.resultingSummary = $resultingSummary
+                   
             merge (pm)-[:NEXT]->(m)
 
             with m
@@ -255,7 +263,10 @@ class Communicator:
             with m, d
             merge (m)-[:HAS_CONTEXT]->(d)
                     """, prevMessId=str(prevMessId), messId=str(messId), content=str(assistant_output), 
-                    role='assistant', contextIndices=context_indices, numDocs=st.session_state['num_documents_for_context'], prompt=st.session_state['general_prompt'])
+                    role='assistant', contextIndices=context_indices, 
+                    numDocs=st.session_state['num_documents_for_context'], 
+                    prompt=st.session_state['general_prompt'],
+                    resultingSummary=mem)
             
         # update the latest message in the log chain
         st.session_state['latest_message_id'] = messId
@@ -317,39 +328,74 @@ class Communicator:
 
             print("Context creation total time: "+str(round(time.perf_counter()-context_timer_start, 4))+" seconds.")
 
-            st.session_state['general_prompt'] = """
-                    Follow these steps exactly: question
-                    1. Read this question as an experienced graph data scientist at Neo4j: 
-                    2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context[['url', 'text']].to_dict('records')}
-                    3. Use this context and your knowledge to answer the user question.
-                    4. Return your answer with sources.
-                    """
-            
-            return [f"""
+            prompt_template = """
                     Follow these steps exactly:
                     1. Read this question as an experienced graph data scientist at Neo4j: {question} 
                     2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context[['url', 'text']].to_dict('records')}
                     3. Use this context and your knowledge to answer the user question.
                     4. Return your answer with sources.
-                    """, 
-                    list(context['index'])]
+                              """
+            
+            prompt = PromptTemplate(input_variables=["question", "context"], template=prompt_template)
+
+            # st.session_state['general_prompt'] = """
+            #         Follow these steps exactly: question
+            #         1. Read this question as an experienced graph data scientist at Neo4j: 
+            #         2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context[['url', 'text']].to_dict('records')}
+            #         3. Use this context and your knowledge to answer the user question.
+            #         4. Return your answer with sources.
+            #         """
+
+            st.session_state['general_prompt'] = prompt_template
+            
+            # return [f"""
+            #         Follow these steps exactly:
+            #         1. Read this question as an experienced graph data scientist at Neo4j: {question} 
+            #         2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context[['url', 'text']].to_dict('records')}
+            #         3. Use this context and your knowledge to answer the user question.
+            #         4. Return your answer with sources.
+            #         """, 
+            #         list(context['index'])]
+        
+            return [
+                prompt.format(question=question, context=context[['url', 'text']].to_dict('records')),
+                list(context['index'])
+            ]
         # no context
         else:
 
-            st.session_state['general_prompt'] = """
-                    Follow these steps exactly:
-                    1. Read this question as an experienced graph data scientist at Neo4j: {question} 
-                    2. Use your knowledge to answer the user question.
-                    3. Return your answer with sources if possible.
-                    """
+            # st.session_state['general_prompt'] = """
+            #         Follow these steps exactly:
+            #         1. Read this question as an experienced graph data scientist at Neo4j: {question} 
+            #         2. Use your knowledge to answer the user question.
+            #         3. Return your answer with sources if possible.
+            #         """
             
-            return [f"""
+            # return [f"""
+            #         Follow these steps exactly:
+            #         1. Read this question as an experienced graph data scientist at Neo4j: {question} 
+            #         2. Use your knowledge to answer the user question.
+            #         3. Return your answer with sources if possible.
+            #         """, 
+            #         list()]
+
+            prompt_template = """
                     Follow these steps exactly:
                     1. Read this question as an experienced graph data scientist at Neo4j: {question} 
                     2. Use your knowledge to answer the user question.
                     3. Return your answer with sources if possible.
-                    """, 
-                    list()]
+                              """
+            
+            st.session_state['general_prompt'] = prompt_template
+
+            prompt = PromptTemplate(input_variables=["question"], template=prompt_template)
+            
+            return [
+                prompt.format(question=question),
+                list()
+            ]
+            
+           
 
     def init_llm(self, llm_type: str, temperature: float):
         """
@@ -406,9 +452,13 @@ class Communicator:
         print("llm type: ", llm_type)
         llm = self.init_llm(llm_type, st.session_state['temperature'])
 
+        st.session_state['llm_memory'] = ConversationSummaryBufferMemory(llm=llm, max_token_limit=1000)
+
+        # print(st.session_state['llm_memory'].load_memory_variables())
+
         res = ConversationChain(
             llm=llm,
-            memory=ConversationSummaryBufferMemory(llm=llm, max_token_limit=1000)
+            memory=st.session_state['llm_memory']
             ) 
         print("Create conversation time: "+str(round(time.perf_counter()-create_conversation_timer_start, 4))+" seconds.")
 

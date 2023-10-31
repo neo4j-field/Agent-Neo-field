@@ -1,7 +1,6 @@
 import streamlit as st
 from urllib.error import URLError
 from communicator import Communicator
-from credentials import validate_openai_key
 from streamlit_feedback import streamlit_feedback
 import time
 import uuid
@@ -58,7 +57,7 @@ try:
 
     st.title("Agent Neo")
     st.sidebar.write("# Agent Neo", 1.0)
-    st.sidebar.markdown("Read more: [The Practical Benefits to Grounding an LLM in a Knowledge Graph](https://medium.com/@bukowski.daniel/the-practical-benefits-to-grounding-an-llm-in-a-knowledge-graph-919918eb493)")
+    # st.sidebar.markdown("Read more: [The Practical Benefits to Grounding an LLM in a Knowledge Graph](https://medium.com/@bukowski.daniel/the-practical-benefits-to-grounding-an-llm-in-a-knowledge-graph-919918eb493)")
 
     # init session if first visit
     if len(st.session_state.keys()) == 0:
@@ -197,7 +196,8 @@ try:
             key='rating_options'+str(len(st.session_state['messages']))
         )
 
-    
+    # print('\n', st.session_state['llm_memory'].moving_summary_buffer)
+
 except URLError as e:
     st.error(
         """
