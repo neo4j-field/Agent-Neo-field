@@ -101,15 +101,12 @@ try:
         st.markdown(blog_list)
 
     # Add a reset button
-    # st.sidebar.caption('<p class="sidebar-font">Reset Chat & Memory</p>', unsafe_allow_html=True)
-    if st.sidebar.button("Reset Conversation", type="secondary", 
-                        #  help='''
-                        #       Effectively reset the session. A new Neo4j driver is created and the LLM history is cleared.
-                        #       ''',
-                        use_container_width=True):
+    if st.sidebar.button("Reset Conversation", type="secondary", use_container_width=True):
+        
         for key in st.session_state.keys():
             if key != 'session_id':
                 del st.session_state[key]
+
         st.session_state["messages"] = RESET_MESSAGE
         st.session_state["history"] = []
         st.session_state['temperature'] = temperature
@@ -195,8 +192,6 @@ try:
             on_submit=st.session_state['communicator'].rate_message,
             key='rating_options'+str(len(st.session_state['messages']))
         )
-
-    # print('\n', st.session_state['llm_memory'].moving_summary_buffer)
 
 except URLError as e:
     st.error(
