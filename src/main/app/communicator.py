@@ -1,7 +1,6 @@
 from neo4j.exceptions import ConstraintError
 from google.oauth2 import service_account
 from google.cloud import aiplatform
-# import os
 import streamlit as st
 import drivers
 from typing import List, Optional
@@ -9,26 +8,20 @@ from graphdatascience import GraphDataScience
 from credentials import neo4j_credentials
 
 from vertexai.preview.language_models import TextEmbeddingModel
-# import vertexai
 
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
-
-# from langchain.llms import VertexAI
+from langchain.prompts.prompt import PromptTemplate
 
 import time
 import uuid
 
 import openai
-# from langchain.chat_models import AzureChatOpenAI
 
-# EMBEDDING_DIMENSIONS = 768
 TEXT_EMBEDDING_MODEL = "textembedding-gecko@001"
-# TEXT_GEN_MODEL = "text-bison@001"
-# CHAT_MODEL = 'chat-bison@001'
-# CHAT_MODEL_32 = 'chat-bison-32k'
 
+PUBLIC = 'false'
 
 # AUTHENTICATE SERVICE ACCOUNT  
 google_credentials = service_account.Credentials.from_service_account_info(
@@ -56,7 +49,6 @@ class Communicator:
 
         # init the aiplatform 
         aiplatform.init(project=self.project, location=self.region, credentials=google_credentials)
-        # vertexai.init(project=self.project, location=self.region, credentials=google_credentials)
 
         # instantiate Google text embedding model
         self.text_embedding_model = TextEmbeddingModel.from_pretrained(TEXT_EMBEDDING_MODEL)
@@ -125,12 +117,11 @@ class Communicator:
                                        )
         
         if st.session_state['num_documents_for_context'] > 0:
+
             # get documents from Neo4j database
             neo4j_timer_start = time.perf_counter()
-            # try:
             docs = neo4j_vector_index_search()
-            # except ConstraintError as err:
-            #     print(err)
+
                 
             print("Neo4j time: "+str(round(time.perf_counter()-neo4j_timer_start, 4))+" seconds.")
         else:
@@ -159,11 +150,11 @@ class Communicator:
             create (c:Conversation)-[:FIRST]->(m:Message)
             set c.id = $convId, c.llm = $llm,
                 c.temperature = $temperature,
-                c.public = true,
+                c.public = toBoolean($public),
                 m.id = $messId, m.content = $content,
                 m.role = $role, m.postTime = datetime(),
                 m.embedding = $embedding,
-                m.public = true
+                m.public = toBoolean($public)
             
             with c
             merge (s:Session {id: $sessionId})
@@ -172,7 +163,8 @@ class Communicator:
                       """, convId=convId, llm=llm, messId=messId, 
                            temperature=st.session_state['temperature'],
                            content=user_input, role='user', sessionId=st.session_state['session_id'], 
-                           embedding=st.session_state['recent_question_embedding'])
+                           embedding=st.session_state['recent_question_embedding'],
+                           public=PUBLIC)
         
         # update the latest message in the log chain
         st.session_state['latest_message_id'] = messId
@@ -205,11 +197,11 @@ class Communicator:
             merge (m:Message {id: $messId})
             set m.content = $content,
                 m.role = $role, m.postTime = datetime(),
-                m.embedding = $embedding, m.public = true
+                m.embedding = $embedding, m.public = toBoolean($public)
                    
             merge (pm)-[:NEXT]->(m)
                       """, prevMessId=prevMessId, messId=messId, content=user_input, role='user',
-                           embedding=st.session_state['recent_question_embedding'])
+                           embedding=st.session_state['recent_question_embedding'], public=PUBLIC)
         
         # update the latest message in the log chain
         st.session_state['latest_message_id'] = messId
@@ -235,6 +227,8 @@ class Communicator:
         prevMessId = st.session_state['latest_message_id']
         messId = 'llm-'+str(uuid.uuid4())
 
+        mem = st.session_state['llm_memory'].moving_summary_buffer
+
         def log(tx):
             tx.run("""
             match (pm:Message {id: $prevMessId})
@@ -244,7 +238,9 @@ class Communicator:
                 m.numDocs = $numDocs,
                 m.vectorIndexSearch = true,
                 m.prompt = $prompt,
-                m.public = true
+                m.public = toBoolean($public),
+                m.resultingSummary = $resultingSummary
+                   
             merge (pm)-[:NEXT]->(m)
 
             with m
@@ -255,7 +251,11 @@ class Communicator:
             with m, d
             merge (m)-[:HAS_CONTEXT]->(d)
                     """, prevMessId=str(prevMessId), messId=str(messId), content=str(assistant_output), 
-                    role='assistant', contextIndices=context_indices, numDocs=st.session_state['num_documents_for_context'], prompt=st.session_state['general_prompt'])
+                    role='assistant', contextIndices=context_indices, 
+                    numDocs=st.session_state['num_documents_for_context'], 
+                    prompt=st.session_state['general_prompt'],
+                    resultingSummary=mem,
+                    public=PUBLIC)
             
         # update the latest message in the log chain
         st.session_state['latest_message_id'] = messId
@@ -317,41 +317,44 @@ class Communicator:
 
             print("Context creation total time: "+str(round(time.perf_counter()-context_timer_start, 4))+" seconds.")
 
-            st.session_state['general_prompt'] = """
-                    Follow these steps exactly: question
-                    1. Read this question as an experienced graph data scientist at Neo4j: 
-                    2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context[['url', 'text']].to_dict('records')}
-                    3. Use this context and your knowledge to answer the user question.
-                    4. Return your answer with sources.
-                    """
-            
-            return [f"""
+            prompt_template = """
                     Follow these steps exactly:
                     1. Read this question as an experienced graph data scientist at Neo4j: {question} 
-                    2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context[['url', 'text']].to_dict('records')}
+                    2. Read and summarize the following context documents, ignoring any that do not relate to the user question: {context}
                     3. Use this context and your knowledge to answer the user question.
                     4. Return your answer with sources.
-                    """, 
-                    list(context['index'])]
+                              """
+            
+            prompt = PromptTemplate(input_variables=["question", "context"], template=prompt_template)
+
+            st.session_state['general_prompt'] = prompt_template
+        
+            return [
+                prompt.format(question=question, context=context[['url', 'text']].to_dict('records')),
+                list(context['index'])
+            ]
         # no context
         else:
 
-            st.session_state['general_prompt'] = """
+            prompt_template = """
                     Follow these steps exactly:
                     1. Read this question as an experienced graph data scientist at Neo4j: {question} 
                     2. Use your knowledge to answer the user question.
                     3. Return your answer with sources if possible.
-                    """
+                              """
             
-            return [f"""
-                    Follow these steps exactly:
-                    1. Read this question as an experienced graph data scientist at Neo4j: {question} 
-                    2. Use your knowledge to answer the user question.
-                    3. Return your answer with sources if possible.
-                    """, 
-                    list()]
+            st.session_state['general_prompt'] = prompt_template
 
-    def init_llm(self, llm_type: str, temperature: float):
+            prompt = PromptTemplate(input_variables=["question"], template=prompt_template)
+            
+            return [
+                prompt.format(question=question),
+                list()
+            ]
+            
+           
+
+    def _init_llm(self, llm_type: str, temperature: float):
         """
         This function initializes an LLM for conversation.
         Each time the LLM type is changed, the conversation is reinitialized
@@ -404,11 +407,13 @@ class Communicator:
         """
         create_conversation_timer_start = time.perf_counter()
         print("llm type: ", llm_type)
-        llm = self.init_llm(llm_type, st.session_state['temperature'])
+        llm = self._init_llm(llm_type, st.session_state['temperature'])
+
+        st.session_state['llm_memory'] = ConversationSummaryBufferMemory(llm=llm, max_token_limit=1000)
 
         res = ConversationChain(
             llm=llm,
-            memory=ConversationSummaryBufferMemory(llm=llm, max_token_limit=1000)
+            memory=st.session_state['llm_memory']
             ) 
         print("Create conversation time: "+str(round(time.perf_counter()-create_conversation_timer_start, 4))+" seconds.")
 

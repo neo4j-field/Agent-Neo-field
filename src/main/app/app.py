@@ -1,7 +1,6 @@
 import streamlit as st
 from urllib.error import URLError
 from communicator import Communicator
-from credentials import validate_openai_key
 from streamlit_feedback import streamlit_feedback
 import time
 import uuid
@@ -58,7 +57,7 @@ try:
 
     st.title("Agent Neo")
     st.sidebar.write("# Agent Neo", 1.0)
-    st.sidebar.markdown("Read more: [The Practical Benefits to Grounding an LLM in a Knowledge Graph](https://medium.com/@bukowski.daniel/the-practical-benefits-to-grounding-an-llm-in-a-knowledge-graph-919918eb493)")
+    # st.sidebar.markdown("Read more: [The Practical Benefits to Grounding an LLM in a Knowledge Graph](https://medium.com/@bukowski.daniel/the-practical-benefits-to-grounding-an-llm-in-a-knowledge-graph-919918eb493)")
 
     # init session if first visit
     if len(st.session_state.keys()) == 0:
@@ -102,15 +101,12 @@ try:
         st.markdown(blog_list)
 
     # Add a reset button
-    # st.sidebar.caption('<p class="sidebar-font">Reset Chat & Memory</p>', unsafe_allow_html=True)
-    if st.sidebar.button("Reset Conversation", type="secondary", 
-                        #  help='''
-                        #       Effectively reset the session. A new Neo4j driver is created and the LLM history is cleared.
-                        #       ''',
-                        use_container_width=True):
+    if st.sidebar.button("Reset Conversation", type="secondary", use_container_width=True):
+        
         for key in st.session_state.keys():
             if key != 'session_id':
                 del st.session_state[key]
+
         st.session_state["messages"] = RESET_MESSAGE
         st.session_state["history"] = []
         st.session_state['temperature'] = temperature
@@ -197,7 +193,6 @@ try:
             key='rating_options'+str(len(st.session_state['messages']))
         )
 
-    
 except URLError as e:
     st.error(
         """
