@@ -11,7 +11,7 @@ from credentials import neo4j_credentials
 from vertexai.preview.language_models import TextEmbeddingModel
 # import vertexai
 
-from langchain.chat_models import ChatVertexAI
+from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 
@@ -21,13 +21,13 @@ import time
 import uuid
 
 import openai
-from langchain.chat_models import AzureChatOpenAI
+# from langchain.chat_models import AzureChatOpenAI
 
-EMBEDDING_DIMENSIONS = 768
+# EMBEDDING_DIMENSIONS = 768
 TEXT_EMBEDDING_MODEL = "textembedding-gecko@001"
-TEXT_GEN_MODEL = "text-bison@001"
-CHAT_MODEL = 'chat-bison@001'
-CHAT_MODEL_32 = 'chat-bison-32k'
+# TEXT_GEN_MODEL = "text-bison@001"
+# CHAT_MODEL = 'chat-bison@001'
+# CHAT_MODEL_32 = 'chat-bison-32k'
 
 
 # AUTHENTICATE SERVICE ACCOUNT  
@@ -127,11 +127,10 @@ class Communicator:
         if st.session_state['num_documents_for_context'] > 0:
             # get documents from Neo4j database
             neo4j_timer_start = time.perf_counter()
-            try:
-                # docs = neo4j_cosine_similarity()
-                docs = neo4j_vector_index_search()
-            except ConstraintError as err:
-                print(err)
+            # try:
+            docs = neo4j_vector_index_search()
+            # except ConstraintError as err:
+            #     print(err)
                 
             print("Neo4j time: "+str(round(time.perf_counter()-neo4j_timer_start, 4))+" seconds.")
         else:
