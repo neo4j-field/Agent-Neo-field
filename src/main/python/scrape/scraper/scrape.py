@@ -1,12 +1,14 @@
 from typing import Optional, Callable, Dict, Any
 from typing import List
 from itertools import chain
+import pandas as pd
 from langchain.document_loaders import UnstructuredURLLoader
 from langchain.schema.document import Document
 from langchain.text_splitter import CharacterTextSplitter
 from google.cloud import storage
 import json
 import os
+import io
 import time
 
 
@@ -29,6 +31,15 @@ class Fetcher:
         if bucket_name is None:
             bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
         return self._read_from_gcp(bucket_name)
+    
+    def get_youtube_urls(self, bucket_name: str = None) -> List[str]:
+        if bucket_name is None:
+            raise ValueError("Bucket name must be provided.")
+        bucket = self.client.get_bucket(bucket_name)
+        videos_temp = bucket.get_blob("youtube/neo4j_video_list.csv")
+        videos_temp = videos_temp.download_as_string()
+        videos_list = pd.read_csv(io.BytesIO(videos_temp))['YouTube_Address'].to_list()
+        return videos_list
 
     def _read_from_gcp(self, bucket_name: str, blob_name: str = None) -> Dict[str, Any]:
 
@@ -61,6 +72,74 @@ class Fetcher:
 
 
 class WebContentChunker:
+    def __init__(self):
+        self._chunked_documents = []
+
+    @property
+    def chunk_texts(self) -> List[str]:
+        self._assert_documents_chunked()
+        return [chunk.page_content for chunk in self._chunked_documents]
+
+    @property
+    def chunk_urls(self) -> List[str]:
+        self._assert_documents_chunked()
+        return [chunk.metadata.get('source', '') for chunk in self._chunked_documents]
+
+    @property
+    def chunks_as_dict(self) -> Dict[str, str]:
+        self._assert_documents_chunked()
+        return dict(zip(self.chunk_urls, self.chunk_texts))
+
+    def _assert_documents_chunked(self):
+        if not self._chunked_documents:
+            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
+
+    def _scrape_sites_into_langchain_docs(self, resources: List[str]) -> List[Document]:
+        try:
+            loader = UnstructuredURLLoader(urls=resources)
+            return loader.load()
+        except Exception as e:
+            print(f"Error loading documents from URLs: {e}")
+            return []
+
+    def _split_into_chunks(self, documents: List[Document],
+                           splitter: Callable[[List[Document]], List[Document]]) -> List[Document]:
+        return splitter.split_documents(documents)
+
+    def _clean_chunked_documents(self, chunked_docs: List[Document], cleaning_functions: List[Callable[[str], str]]) -> \
+            List[Document]:
+        for i, doc in enumerate(chunked_docs):
+            for func in cleaning_functions:
+                doc.page_content = func(doc.page_content)
+            chunked_docs[i] = doc
+        return chunked_docs
+
+    def chunk_documents(self, urls: List[str],
+                        splitter: Callable[[List[Document]], List[Document]] = None,
+                        cleaning_functions: List[Callable[[str], str]] = None) -> None:
+
+        if splitter is None:
+            splitter = CharacterTextSplitter(
+                separator="\n",
+                chunk_size=1024,
+                chunk_overlap=128)
+
+        # Start scraping
+        documents = self._scrape_sites_into_langchain_docs(urls)
+
+        # Start splitting
+        chunked_docs = self._split_into_chunks(documents, splitter)
+
+        if cleaning_functions:
+            chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
+
+        self._chunked_documents.extend(chunked_docs)
+
+    def __str__(self) -> str:
+        return "\n".join([f"Document: {doc}" for doc in self._chunked_documents])
+
+
+class YoutubeTranscriptChunker:
     def __init__(self):
         self._chunked_documents = []
 
