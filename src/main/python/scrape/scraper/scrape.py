@@ -72,12 +72,20 @@ class WebContentChunker:
     @property
     def chunk_urls(self) -> List[str]:
         self._assert_documents_chunked()
-        return [chunk.metadata.get('source', '') for chunk in self._chunked_documents]
+        return list({chunk.metadata.get('source', '') for chunk in self._chunked_documents})
 
     @property
-    def chunks_as_dict(self) -> Dict[str, str]:
+    def chunks_as_dict(self) -> Dict[str, List[str]]:
         self._assert_documents_chunked()
-        return dict(zip(self.chunk_urls, self.chunk_texts))
+
+        result = {}
+        for k in self.chunk_urls:
+            result.update({k: []})
+        
+        for chunk in self._chunked_documents:
+            result.get(chunk.metadata.get('source')).append(chunk.page_content)
+
+        return result
 
     def _assert_documents_chunked(self):
         if not self._chunked_documents:
