@@ -208,8 +208,8 @@ class WebContentChunker:
 
         if splitter is None:
             splitter = TokenTextSplitter(
-                chunk_size=100,
-                chunk_overlap=10)
+                chunk_size=512,
+                chunk_overlap=64)
 
         # Start scraping
         documents, failed = self._scrape_youtube_transcripts_into_langchain_docs(ids)
