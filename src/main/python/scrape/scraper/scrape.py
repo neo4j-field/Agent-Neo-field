@@ -309,7 +309,7 @@ class GCPStorageLoader:
         unsuccessful = []
 
         ids = self._get_youtube_video_ids()
-        for id in ids[:10]:
+        for id in ids:
             try:
                 transcript = self._create_transcript(video_id=id)
                 self._upload_transcript(transcript=transcript, video_id=id)
