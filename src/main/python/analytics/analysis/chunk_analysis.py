@@ -33,6 +33,8 @@ class ChunkAnalysis:
         return [sum([len(word) for word in words]) / len(words) for words in word_lists]
 
     @property
-    def chunk_counts(self) -> int:
+    def chunk_count(self) -> int:
 
         return len([chunk for chunk in itertools.chain.from_iterable(self.chunks.values())])
+    
+    
