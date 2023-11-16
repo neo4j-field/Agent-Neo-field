@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from typing import List
 from itertools import chain
+import regex as re
 
 
 def parse_sitemap(sitemap: str) -> List[str]:
@@ -48,3 +49,29 @@ def extract_list_from_json(json_data: dict, key: str = None) -> list:
         if isinstance(json_data[single_key], list):
             return json_data[single_key]
     return []
+
+def remove_filler_words(text: str) -> str:
+    """
+    This method removes filler words such as "um" or "ah" from a given text.
+    """
+
+    filler_words = ["um", "ah", "uh"]
+
+    for word in filler_words:
+        text = text.replace(word, "")
+
+    # remove extra whitespace
+    return text.strip()
+
+def fix_neo4j_spelling(text: str) -> str:
+    """
+    This method corrects the spelling of neo4j in transcripts which is *always* wrong.
+    """
+
+    # safe_words = ['freon', 'fern', 'roof']
+    return re.sub(r"\b([neoforja ]{4,8})\b", "Neo4j", text, flags=re.IGNORECASE)
+
+
+
+
+
