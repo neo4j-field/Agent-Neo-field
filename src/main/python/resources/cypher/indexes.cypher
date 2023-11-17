@@ -1,0 +1,1 @@
+CREATE INDEX documentIndex FOR (d:Document) ON (d.index);
