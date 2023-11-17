@@ -1,12 +1,16 @@
-import sys
+# import sys
 import os
-import pandas as pd
-# sys.path.append("/Users/alexandergilmore/Documents/GitHub/Agent-Neo-field/src/main/python/scrape/scraper")
+from uuid import uuid4
+
+from google.cloud import aiplatform
+from google.oauth2 import service_account
+# import pandas as pd
+
 from scrape import WebContentChunker
 from scrape.scraper.embedding import TextEmbeddingService
 from scrape.scraper.preprocessing import fix_neo4j_spelling
-from google.cloud import aiplatform
-from google.oauth2 import service_account
+from neo4jwriter.neo4jwriter import Neo4jWriter
+
 
 if __name__ == '__main__':
     
@@ -25,13 +29,31 @@ if __name__ == '__main__':
     
     # create nodes to load into graph
     data = chunker.chunks_as_dict.copy()
-    new_nodes = dict()
-    i = 0
+    new_nodes = list()
     for url, v in data.items():
         for text in v:
-            new_nodes.update({str(i): {"url": url,
-                                    "text": text,
-                                    "embedding": embedding_service.get_embedding(text)}})
-            i+=1
+            new_nodes.append({ "index": str(uuid4()),
+                                        "url": url,
+                                        "text": text,
+                                        "embedding": embedding_service.get_embedding(text)})
 
-    print(new_nodes["0"])
+    writer = Neo4jWriter()
+
+    query = """
+            UNWIND $params AS param
+            MERGE (d:Document {index: param.index})
+            MERGE (s:Source {url:param.url})
+            MERGE (t:Type {type: "YouTube transcript"})
+            SET
+                d.createTime = datetime(),
+                d.index = param.index,
+                d.text = param.text,
+                d.url = param.url,
+                d.embedding = param.embedding
+            MERGE (d)-[:HAS_SOURCE]->(s)
+            MERGE (s)-[:HAS_TYPE]->(t)
+            """
+    
+    writer.batch_write(cypher_query=query, params=new_nodes, batch_size=1000)
+
+    print("YouTube transcript chunks uploaded to graph successfully.")

@@ -1,12 +1,13 @@
 from typing import List, Any, Dict, Iterator, Callable, Union
+import os
 from neo4j import GraphDatabase, Transaction
 
 
 class Neo4jWriter:
-    def __init__(self, neo4j_url: str = '',
-                 neo4j_user: str = '',
-                 neo4j_password: str = '',
-                 database: str = ''):
+    def __init__(self, neo4j_url: str = os.environ.get("NEO4J_URI"),
+                 neo4j_user: str = os.environ.get("NEO4J_USER"),
+                 neo4j_password: str = os.environ.get("NEO4J_PASSWORD"),
+                 database: str = os.environ.get("NEO4J_DATABASE")):
         self.driver = GraphDatabase.driver(neo4j_url, auth=(neo4j_user, neo4j_password))
         self.database = database
 
