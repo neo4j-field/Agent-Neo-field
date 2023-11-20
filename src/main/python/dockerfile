@@ -7,6 +7,7 @@ ENV GCP_PRACTITIONERS_GUIDE_SITES_BUCKET=agent-neo4j-practitionersguides
 ENV GCP_OTHER_ARTICLES_BUCKET=agent-neo4j-otherarticles
 ENV PYTHONPATH=/app/python_modules
 ENV GCP_SERVICE_ACCOUNT_KEY_PATH=/app/gcp_service_account.json
+ENV GITHUB_TOKEN=/app/github_token.json
 
 # Install system dependencies for libmagic
 RUN apt-get update && \

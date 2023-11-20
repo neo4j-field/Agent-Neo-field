@@ -13,12 +13,15 @@ import json
 import os
 import io
 import time
+import requests
+import re
 
 
 class Fetcher:
     def __init__(self, client: storage.Client = None):
         self.client = client or storage.Client()
         self.service_account = os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
+        self.github_token = os.environ.get('GITHUB_TOKEN')
 
     def get_sitemap_urls(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
         if bucket_name is None:
@@ -34,7 +37,24 @@ class Fetcher:
         if bucket_name is None:
             bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
         return self._read_from_gcp(bucket_name)
-    
+
+    def _list_github_repos(self, org_name: str) -> List[str]:
+        headers = {'Authorization': f'token {self.github_token}'}
+        repo_urls = []
+        page = 1
+        while True:
+            response = requests.get(f'https://api.github.com/orgs/{org_name}/repos?page={page}', headers=headers)
+            data = response.json()
+            if not data:
+                break
+            repo_urls.extend([repo['clone_url'] for repo in data])
+            page += 1
+        return repo_urls
+
+    def get_repos_by_pattern(self, org_name: str, pattern: str) -> List[str]:
+        all_repos = self._list_github_repos(org_name=org_name)
+        return [repo for repo in all_repos if re.search(pattern, repo)]
+
     def get_youtube_video_ids(self, bucket_name: str = None) -> List[str]:
         if bucket_name is None:
             raise ValueError("Bucket name must be provided.")
@@ -79,8 +99,8 @@ class WebContentChunker:
     def __init__(self, client: storage.Client = None) -> None:
         if not client:
             credentials = service_account.Credentials.from_service_account_file(
-                    os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
-                )  
+                os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
+            )
             self.client = storage.Client(credentials=credentials)
         else:
             self.client = client
@@ -107,7 +127,7 @@ class WebContentChunker:
         result = {}
         for k in self.chunk_urls:
             result.update({k: []})
-        
+
         for chunk in self._chunked_documents:
             result.get(chunk.metadata.get('source')).append(chunk.page_content)
 
@@ -124,7 +144,7 @@ class WebContentChunker:
         except Exception as e:
             print(f"Error loading documents from URLs: {e}")
             return []
-    
+
     @staticmethod
     def _process_youtube_id(id) -> str:
         """
@@ -133,17 +153,18 @@ class WebContentChunker:
         """
         result = id.replace("youtube/transcripts/", "")
         return result.replace(".txt", "")
-    
+
     def _get_transcript_text(self, id: str) -> str:
         """
         This method gets the transcript text from the GCP storage bucket address.
         """
 
-        transcript = self.bucket.get_blob("youtube/transcripts/"+id+".txt").download_as_text()
-        
+        transcript = self.bucket.get_blob("youtube/transcripts/" + id + ".txt").download_as_text()
+
         return transcript
 
-    def _scrape_youtube_transcripts_into_langchain_docs(self, id_list: List[str] = None) -> Tuple[List[Document], List[str]]:
+    def _scrape_youtube_transcripts_into_langchain_docs(self, id_list: List[str] = None) -> Tuple[
+        List[Document], List[str]]:
         """
         This method retrieves all YouTube transcripts listed in the provided file list from GCP Storage.
         It then formats them into LangChain Documents. 
@@ -154,13 +175,14 @@ class WebContentChunker:
 
         # grab all trancript file addresses in bucket and format to get ids
         if not id_list:
-            id_list = [self._process_youtube_id(blob.name) for blob in self.client.list_blobs(self.bucket_name, prefix="youtube/transcripts/")][1:]
+            id_list = [self._process_youtube_id(blob.name) for blob in
+                       self.client.list_blobs(self.bucket_name, prefix="youtube/transcripts/")][1:]
 
         # grab the transcripts and format into LangChain docs
         for id in id_list:
             try:
                 transcript = self._get_transcript_text(id)
-                url = "https://www.youtube.com/watch?v="+id
+                url = "https://www.youtube.com/watch?v=" + id
                 docs.append(Document(page_content=transcript, metadata={"source": url}))
             except Exception as e:
                 print(f"Error loading document with id: {id}")
@@ -201,10 +223,10 @@ class WebContentChunker:
             chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
 
         self._chunked_documents.extend(chunked_docs)
-    
+
     def chunk_youtube_transcripts(self, ids: List[str] = None,
-                        splitter: Callable[[List[Document]], List[Document]] = None,
-                        cleaning_functions: List[Callable[[str], str]] = None) -> None:
+                                  splitter: Callable[[List[Document]], List[Document]] = None,
+                                  cleaning_functions: List[Callable[[str], str]] = None) -> None:
 
         if splitter is None:
             splitter = TokenTextSplitter(
@@ -221,11 +243,11 @@ class WebContentChunker:
             chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
 
         self._chunked_documents.extend(chunked_docs)
-        
+
     def __str__(self) -> str:
         return "\n".join([f"Document: {doc}" for doc in self._chunked_documents])
 
-    
+
 class GCPStorageLoader:
     """
     This class provides methods for loading new data into the Agent Neo storage buckets.
@@ -234,8 +256,8 @@ class GCPStorageLoader:
     def __init__(self, client: storage.Client = None) -> None:
         if not client:
             credentials = service_account.Credentials.from_service_account_file(
-                    os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
-                )  
+                os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
+            )
             self.client = storage.Client(credentials=credentials)
         else:
             self.client = client
@@ -267,7 +289,7 @@ class GCPStorageLoader:
         videos_list = pd.read_csv(io.BytesIO(videos_temp))['YouTube_Address'].to_list()
 
         return videos_list
-    
+
     @staticmethod
     def _create_transcript(video_id: str) -> str:
         """
@@ -285,7 +307,7 @@ class GCPStorageLoader:
         # replace newlines with a space 
 
         return transcript_formatted.replace("\n", " ")
-    
+
     def _upload_transcript(self, transcript: str, video_id: str) -> None:
         """
         This method uploads a transcript to GCP Storage.
@@ -293,7 +315,7 @@ class GCPStorageLoader:
         """
 
         file_loc = "youtube/transcripts/"
-        self.bucket.blob(file_loc+video_id+".txt").upload_from_string(transcript, 'text/plain')
+        self.bucket.blob(file_loc + video_id + ".txt").upload_from_string(transcript, 'text/plain')
 
     def create_and_upload_neo4j_transcripts(self) -> List[str]:
         """
@@ -313,13 +335,13 @@ class GCPStorageLoader:
             try:
                 transcript = self._create_transcript(video_id=id)
                 self._upload_transcript(transcript=transcript, video_id=id)
-                print("Video "+id+" Uploaded to GCP Storage.")
+                print("Video " + id + " Uploaded to GCP Storage.")
             except Exception as e:
-                print("Failed: "+id)
+                print("Failed: " + id)
                 # print(e)
-                unsuccessful+=[id]
+                unsuccessful += [id]
 
-        return unsuccessful  
+        return unsuccessful
 
     def update_unsuccessful_transcripts(self, unsuccessful_list: List[str]) -> None:
         """
@@ -329,5 +351,4 @@ class GCPStorageLoader:
 
         file_loc = "youtube/"
         failed_df = pd.Series({"YouTube_Address": unsuccessful_list})
-        self.bucket.blob(file_loc+"neo4j_failed_video_list.csv").upload_from_string(failed_df.to_csv(), 'text/csv')
-
+        self.bucket.blob(file_loc + "neo4j_failed_video_list.csv").upload_from_string(failed_df.to_csv(), 'text/csv')
