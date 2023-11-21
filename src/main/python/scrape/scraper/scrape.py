@@ -13,6 +13,7 @@ import json
 import os
 import io
 import time
+import requests
 
 
 class Fetcher:
@@ -248,6 +249,8 @@ class GCPStorageLoader:
         # This can happen with unaired live videos
         self._unsuccessful_list = None
 
+        self._recent_youtube_ids = None
+
     def add_new_youtube_urls(self) -> None:
         """
         This method checks for new youtube videos and updates the csv file in GCP Storage.
@@ -330,4 +333,67 @@ class GCPStorageLoader:
         file_loc = "youtube/"
         failed_df = pd.Series({"YouTube_Address": unsuccessful_list})
         self.bucket.blob(file_loc+"neo4j_failed_video_list.csv").upload_from_string(failed_df.to_csv(), 'text/csv')
+
+    @staticmethod
+    def _get_channel_id() -> str:
+        """
+        This method retrieves the channel id for the "Neo4j" YouTube channel.
+        """
+
+        address = f"https://www.googleapis.com/youtube/v3/results?search_query=neo4j&key={os.environ.get('YOUTUBE_API_KEY')}&part=snippet"
+        req = requests.get(address)
+        data = req.json()
+
+        return data['items'][0]['snippet']['channelId']
+    
+    def _get_uploads_id(self) -> str:
+        """
+        This method retrieves the uploads id for the channel of interest.
+        """
+
+        address = f"https://www.googleapis.com/youtube/v3/channels?id={self._channel_id}&key={os.environ.get('YOUTUBE_API_KEY')}&part=contentDetails"
+        try:
+            req = requests.get(address)
+            data = req.json()
+        except ValueError as e:
+            print(e, "Provide accurate channel id.")
+
+        return data['items'][0]['contentDetails']['relatedPlaylists']['uploads']
+
+
+    def scrape_video_addresses(self, next_page_token: str = None, total_results: int = -1, videos: List[str] = []) -> List[str]:
+            
+        address = f"https://www.googleapis.com/youtube/v3/playlistItems?playlistId={self._uploads_id}&key={os.environ.get('YOUTUBE_API_KEY')}&part=snippet&maxResults=50"
+        
+        if not next_page_token:
+            vid_req = requests.get(address)
+
+        else:
+            vid_req = requests.get(address+f'&pageToken={next_page_token}')
+            
+        vids = vid_req.json()
+
+        if total_results == -1:
+            total_results = vids['pageInfo']['totalResults']
+            print('total results set: ', total_results)
+
+        videos += [x['snippet']['resourceId']['videoId'] for x in vids['items']]
+
+        print("total results: ", total_results)
+        print("ids retrieved: ", len(videos), "\n")
+
+        # reached the end of the search pages
+        if "nextPageToken" not in vids.keys():
+            print("complete")
+            return videos
+        
+        if any(x in self._recent_youtube_ids for x in videos):
+            print("complete")
+            return videos
+        
+        next_page_token = vids['nextPageToken']
+
+        self.scrape_video_addresses(next_page_token=next_page_token, total_results=total_results, videos=videos)
+
+        return videos
 
