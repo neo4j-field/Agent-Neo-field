@@ -1,3 +1,4 @@
+import base64
 from typing import Optional, Callable, Dict, Any
 from typing import List, Tuple
 from itertools import chain
@@ -16,7 +17,7 @@ import time
 import requests
 import re
 
-
+#TODO: 11/18 probably worth impelmenting some ABC/ interface for Fetcher and splitting out the methods associated with each data source to their own class
 class Fetcher:
     def __init__(self, client: storage.Client = None):
         self.client = client or storage.Client()
@@ -51,9 +52,24 @@ class Fetcher:
             page += 1
         return repo_urls
 
-    def get_repos_by_pattern(self, org_name: str, pattern: str) -> List[str]:
+    def _get_git_repos_by_pattern(self, org_name: str, repo_pattern: str) -> List[str]:
         all_repos = self._list_github_repos(org_name=org_name)
-        return [repo for repo in all_repos if re.search(pattern, repo)]
+        return [repo for repo in all_repos if re.search(repo_pattern, repo)]
+
+    def fetch_files_from_git_repos(self, org_name: str, repo_pattern: str):
+        file_contents = {}
+        repo_urls = self._get_git_repos_by_pattern(org_name=org_name, repo_pattern=repo_pattern)
+
+    #TODO: 11.18
+    #Handle errors more appropriately
+    def fetch_file_content(self, file_url: str) -> str:
+        headers = {'Authorization': f'token {self.github_token}'}
+        response = requests.get(file_url, headers=headers)
+        if response.status_code == 200:
+            file_data = base64.b64decode(response.json()['content'])
+            return file_data.decode('utf-8')
+        else:
+            return None
 
     def get_youtube_video_ids(self, bucket_name: str = None) -> List[str]:
         if bucket_name is None:
