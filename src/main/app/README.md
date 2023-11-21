@@ -1,2 +1,5 @@
 # Agent-Neo
-Repo for the project to create an LLM-enhanced Chat Agent to support customers and employees working with Neo4j Graph Data Science
+to run locally:
+- create .streamlit/secrets.toml in app folder
+- complete secrets file in format of dummy.toml
+- in app folder run $ streamlit run app.py
