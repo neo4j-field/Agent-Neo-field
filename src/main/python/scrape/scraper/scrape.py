@@ -13,11 +13,12 @@ from youtube_transcript_api.formatters import TextFormatter
 import json
 import os
 import io
-import time
 import requests
 import re
 
-#TODO: 11/18 probably worth impelmenting some ABC/ interface for Fetcher and splitting out the methods associated with each data source to their own class
+
+# TODO: 11/18 probably worth implementing some ABC/ interface for Fetcher and splitting out the methods associated
+#  with each data source to their own class
 class Fetcher:
     def __init__(self, client: storage.Client = None):
         self.client = client or storage.Client()
@@ -39,6 +40,24 @@ class Fetcher:
             bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
         return self._read_from_gcp(bucket_name)
 
+    def fetch_files_from_git_repos(self, org_name: str, repo_pattern: str):
+        file_contents = {}
+        repo_urls = self._get_git_repos_by_pattern(org_name=org_name, repo_pattern=repo_pattern)
+
+        repo_names = [repo_url.split('/')[-1].split('.')[0] for repo_url in repo_urls]
+
+        for repo_name in repo_names:
+            repo_files = self._list_repo_files(org_name=org_name, repo_name=repo_name)
+            for file_path, file_url in repo_files.items():
+                file_data = self._fetch_file_content(file_url)
+                if file_data:
+                    file_contents[f"{repo_name}/{file_path}"] = file_data
+        return file_contents
+
+    def _get_git_repos_by_pattern(self, org_name: str, repo_pattern: str) -> List[str]:
+        all_repos = self._list_github_repos(org_name=org_name)
+        return [repo for repo in all_repos if re.search(repo_pattern, repo)]
+
     def _list_github_repos(self, org_name: str) -> List[str]:
         headers = {'Authorization': f'token {self.github_token}'}
         repo_urls = []
@@ -52,17 +71,27 @@ class Fetcher:
             page += 1
         return repo_urls
 
-    def _get_git_repos_by_pattern(self, org_name: str, repo_pattern: str) -> List[str]:
-        all_repos = self._list_github_repos(org_name=org_name)
-        return [repo for repo in all_repos if re.search(repo_pattern, repo)]
+    def _list_repo_files(self, org_name: str, repo_name: str) -> Dict[str, str]:
+        api_base_url = f"https://api.github.com/repos/{org_name}/{repo_name}/contents/"
+        file_paths = self._recursive_file_listing(api_base_url)
+        return file_paths
 
-    def fetch_files_from_git_repos(self, org_name: str, repo_pattern: str):
-        file_contents = {}
-        repo_urls = self._get_git_repos_by_pattern(org_name=org_name, repo_pattern=repo_pattern)
+    def _recursive_file_listing(self, url: str, path: str = '') -> Dict[str, str]:
+        headers = {'Authorization': f'token {self.github_token}'}
+        response = requests.get(url + path, headers=headers)
+        items = response.json()
 
-    #TODO: 11.18
-    #Handle errors more appropriately
-    def fetch_file_content(self, file_url: str) -> str:
+        file_paths = {}
+        if isinstance(items, list):
+            for item in items:
+                if item['type'] == 'file':
+                    file_paths[item['path']] = item['url']
+                elif item['type'] == 'dir':
+                    file_paths.update(self._recursive_file_listing(url, item['path']))
+        return file_paths
+
+    # TODO: 11.18  Handle errors more appropriately
+    def _fetch_file_content(self, file_url: str) -> str:
         headers = {'Authorization': f'token {self.github_token}'}
         response = requests.get(file_url, headers=headers)
         if response.status_code == 200:
@@ -189,7 +218,7 @@ class WebContentChunker:
         docs = []
         unsuccessful = []
 
-        # grab all trancript file addresses in bucket and format to get ids
+        # grab all transcript file addresses in bucket and format to get ids
         if not id_list:
             id_list = [self._process_youtube_id(blob.name) for blob in
                        self.client.list_blobs(self.bucket_name, prefix="youtube/transcripts/")][1:]

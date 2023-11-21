@@ -3,6 +3,7 @@ import unittest
 from google.cloud import storage
 from ..scraper.scrape import Fetcher
 
+
 class TestFetcher(unittest.TestCase):
 
     @classmethod
@@ -17,11 +18,12 @@ class TestFetcher(unittest.TestCase):
         list_of_urls = self.fetcher._list_github_repos(org_name='neo4j')
         print(list_of_urls)
 
-
-
+    @unittest.skip("")
     def test_get_filtered_urls(self):
-        filtered_list = self.fetcher.get_repos_by_pattern(org_name='neo4j',pattern='graph-data-science-client')
+        filtered_list = self.fetcher.get_repos_by_pattern(org_name='neo4j', pattern='graph-data-science-client')
         print(filtered_list)
 
-
+    def test_fetch_files_from_git_repos(self):
+        test = self.fetcher.fetch_files_from_git_repos(org_name='neo4j', repo_pattern='graph-data-science-client')
+        print(test)
 
