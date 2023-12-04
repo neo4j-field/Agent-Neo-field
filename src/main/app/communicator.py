@@ -10,6 +10,7 @@ from credentials import neo4j_credentials
 from vertexai.preview.language_models import TextEmbeddingModel
 
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain.llms import bedrock
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts.prompt import PromptTemplate
@@ -97,7 +98,7 @@ class Communicator:
         Cosine similarity is ran on the embedding against the embeddings in the 
         Neo4j database to find documents that will be used to construct
         the context. 
-        The top n documents with their URLs are returned as context.
+        The top k documents with their URLs are returned as context.
         '''
 
         # generate embeddings from matching prompt
@@ -396,6 +397,10 @@ class Communicator:
                        deployment_name = st.secrets['gpt4_32k_name'],
                        model_name = 'gpt-4-32k',
                        temperature=temperature) # default is 0.7
+            # TODO: [AG-65] Implement AWS Bedrock
+            case "Bedrock":
+                return bedrock(credentials_profile_name="bedrock-admin", 
+                               model_id="amazon.titan-text-express-v1")
             case _:
                 raise ValueError
 
