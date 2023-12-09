@@ -20,10 +20,10 @@ import re
 # TODO: 11/18 probably worth implementing some ABC/ interface for Fetcher and splitting out the methods associated
 #  with each data source to their own class
 class Fetcher:
-    def __init__(self, client: storage.Client = None):
+    def __init__(self, client: storage.Client = None, github_token: str = None):
         self.client = client or storage.Client()
-        self.service_account = os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
-        self.github_token = os.environ.get('GITHUB_TOKEN')
+        self.github_token = github_token or os.getenv('GITHUB_TOKEN')
+        self.github_token = github_token
 
     def get_sitemap_urls(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
         if bucket_name is None:
@@ -91,13 +91,21 @@ class Fetcher:
         return file_paths
 
     # TODO: 11.18  Handle errors more appropriately
-    def _fetch_file_content(self, file_url: str) -> str:
-        headers = {'Authorization': f'token {self.github_token}'}
-        response = requests.get(file_url, headers=headers)
-        if response.status_code == 200:
-            file_data = base64.b64decode(response.json()['content'])
-            return file_data.decode('utf-8')
-        else:
+    def _fetch_file_content(self, file_url):
+        try:
+            response = requests.get(file_url)
+            response.raise_for_status()
+            file_data = response.content
+
+            encoding = 'iso-8859-1'
+
+            decoded_content = file_data.decode(encoding)
+
+            return decoded_content
+
+        except Exception as e:
+            # Handle any exceptions here
+            print(f"Error fetching or decoding file: {str(e)}")
             return None
 
     def get_youtube_video_ids(self, bucket_name: str = None) -> List[str]:
