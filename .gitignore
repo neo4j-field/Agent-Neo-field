@@ -1,7 +1,7 @@
 # our files
 .streamlit/
 notebooks/
-youtube_gcs_loader.ipynb
+src/main/python/youtube_gcs_loader.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
