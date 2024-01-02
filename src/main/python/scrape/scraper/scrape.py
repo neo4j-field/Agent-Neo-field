@@ -278,8 +278,6 @@ class WebContentChunker:
     def __str__(self) -> str:
         return "\n".join([f"Document: {doc}" for doc in self._chunked_documents])
     
-    from google.cloud import storage
-
 
     # def list_blobs(self, playlist: str = None) -> List[str]:
     #     """Lists all the blobs in the bucket."""
