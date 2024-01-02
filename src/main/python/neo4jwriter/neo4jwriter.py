@@ -8,6 +8,7 @@ class Neo4jWriter:
                  neo4j_user: str = os.environ.get("NEO4J_USER"),
                  neo4j_password: str = os.environ.get("NEO4J_PASSWORD"),
                  database: str = os.environ.get("NEO4J_DATABASE")):
+        
         self.driver = GraphDatabase.driver(neo4j_url, auth=(neo4j_user, neo4j_password))
         self.database = database
 
