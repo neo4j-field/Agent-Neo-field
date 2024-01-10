@@ -1,0 +1,63 @@
+import os
+from typing import List, Dict
+
+import openai
+from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain.chains import ConversationChain
+from pydantic import BaseModel
+from vertexai.preview.language_models import TextEmbeddingModel
+
+class LLM(BaseModel):
+    """
+    Interface for interacting with different LLMs.
+    """
+
+    llm_name: str
+
+    def __init__(self, *a, **kw) -> None:
+        super().__init__(*a, **kw)
+        
+    def _init_llm(self, llm_type: str, temperature: float):
+        """
+        This function initializes an LLM for conversation.
+        Each time the LLM type is changed, the conversation is reinitialized
+        and history is lost.
+        """
+
+        match llm_type:
+            case "chat-bison 2k":
+                return ChatVertexAI(model_name='chat-bison',
+                        max_output_tokens=1024, # this is the max allowed
+                        temperature=temperature, # default temp is 0.0
+                        top_p=0.95, # default is 0.95
+                        top_k = 40 # default is 40
+                       )
+            case "chat-bison 32k":
+                return ChatVertexAI(model_name='chat-bison-32k',
+                        max_output_tokens=8192, # this is the max allowed 
+                        temperature=temperature, # default temp is 0.0
+                        top_p=0.95, # default is 0.95
+                        top_k = 40 # default is 40
+                       )
+            case "GPT-4 8k":
+                # Tokens per Minute Rate Limit (thousands): 10
+                # Rate limit (Tokens per minute): 10000
+                # Rate limit (Requests per minute): 60
+                return AzureChatOpenAI(openai_api_version=openai.api_version,
+                       openai_api_key = openai.api_key,
+                       openai_api_base = os.environ.get('openai_endpoint'),
+                       deployment_name = os.environ.get('gpt4_8k_name'),
+                       model_name = 'gpt-4',
+                       temperature=temperature) # default is 0.7
+            case "GPT-4 32k":
+                # Tokens per Minute Rate Limit (thousands): 30
+                # Rate limit (Tokens per minute): 30000
+                # Rate limit (Requests per minute): 180
+                return AzureChatOpenAI(openai_api_version=openai.api_version,
+                       openai_api_key = openai.api_key,
+                       openai_api_base = os.environ.get('openai_endpoint'),
+                       deployment_name = os.environ.get('gpt4_32k_name'),
+                       model_name = 'gpt-4-32k',
+                       temperature=temperature) # default is 0.7
+            case _:
+                raise ValueError
