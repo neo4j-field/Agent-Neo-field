@@ -2,7 +2,7 @@ from google.cloud import storage
 from typing import Optional, Dict, Any,List
 import os
 import json
-from base_fetcher import BaseFetcher
+from .base_fetcher import BaseFetcher
 import requests
 from bs4 import BeautifulSoup
 from .secret_manager import SecretManager
@@ -73,7 +73,7 @@ class GCPFetcher(BaseFetcher):
         return neo4j_doc_sites
 
 
-    def write_to_gcs(self, data: List[str], bucket_name: str, file_name: str):
+    def write_to_gcs(self, data: List[str] = None, bucket_name: str = None, file_name: str = None):
         """
         Write data to a file in Google Cloud Storage.
         """

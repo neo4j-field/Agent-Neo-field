@@ -7,7 +7,7 @@ class SecretManager:
         self.project_id = project_id or os.getenv('GCP_PROJECT_ID')
         self.client = secretmanager.SecretManagerServiceClient()
 
-    def access_secret_version(self, secret_id, version_id="latest"):
+    def access_secret_version(self, secret_id = None, version_id="latest"):
         name = f"projects/{self.project_id}/secrets/{secret_id}/versions/{version_id}"
         response = self.client.access_secret_version(request={"name": name})
         secret_data = response.payload.data.decode("UTF-8")
