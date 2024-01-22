@@ -9,7 +9,7 @@ class TestSecretManagerReal(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        env_file_path = '/Users/alexanderfournier/Downloads/Agent-Neo-field/src/main/python/airflow/extract/gcp_fetch/env.json'
+        env_file_path = '/src/main/python/airflow/extract/gcpfetch/env.json'
 
         with open(env_file_path, 'r') as f:
             config = json.load(f)
