@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_ID=neo4j-cs-team-201901
+PROJECT_ID=sales-eng-agent-neo-project
 IMAGE_NAME=agent-neo-transform-github
 TAG=latest
 
