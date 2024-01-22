@@ -7,26 +7,18 @@ from ..fetcher import GCPFetcher, SecretManager
 if __name__ == '__main__':
     secret_manager = SecretManager(project_id='neo4j-cs-team-201901')
 
-    secrets = secret_manager.access_secret_version(secret_id='agent-neo-fetch-docs')
+    service_account_info = secret_manager.access_secret_version('GCP_SERVICE_ACCOUNT')
 
-    # Assuming the secret is a JSON object with the base64-encoded service account key
-    # Decode the base64 encoded service account info
-    decoded_service_account_info = base64.b64decode(secrets['GOOGLE_SERVICE_ACCOUNT'])
-    service_account_info = json.loads(decoded_service_account_info)
-
-    # Create credentials from the service account info
     credentials = service_account.Credentials.from_service_account_info(service_account_info)
 
-    # Initialize the GCP client with these credentials
     gcp_client = storage.Client(credentials=credentials)
 
-    fetcher = GCPFetcher(client=gcp_client, secret_manager=secret_manager, secret_name='sitemaps-secret')
+    fetcher = GCPFetcher(client=gcp_client, secret_manager=secret_manager)
 
-    # grab the other keys from the json secrets.
-    sitemaps_bucket = secrets['GCP_SITEMAPS_BUCKET']
-    practitioners_bucket = secrets['GCP_PRACTITIONERS_GUIDE_SITES_BUCKET']
-    other_articles_bucket = secrets['GCP_OTHER_ARTICLES_BUCKET']
-    processed_docs_bucket = secrets['GCP_PROCESSED_DOCS']
+    sitemaps_bucket = secret_manager.access_secret_version('GCP_SITEMAPS_BUCKET')
+    practitioners_bucket = secret_manager.access_secret_version('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')
+    other_articles_bucket = secret_manager.access_secret_version('GCP_OTHER_ARTICLES_BUCKET')
+    processed_docs_bucket = secret_manager.access_secret_version('GCP_PROCESSED_DOCS')
 
     sitemaps_json = fetcher.get_sitemap_urls(bucket_name=sitemaps_bucket)
     other_articles_json = fetcher.get_other_articles(bucket_name=other_articles_bucket)

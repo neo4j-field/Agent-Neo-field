@@ -1,7 +1,6 @@
 import unittest
 import json
-import base64
-import os
+
 from ..fetcher import SecretManager
 
 
@@ -9,7 +8,7 @@ class TestSecretManagerReal(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        env_file_path = '/Users/alexanderfournier/Downloads/Agent-Neo-field/src/main/python/airflow/extract/gcpfetch/env.json'
+        env_file_path = '/src/main/python/airflow/tasks/gcpfetch/env.json'
 
         with open(env_file_path, 'r') as f:
             config = json.load(f)
@@ -35,7 +34,7 @@ class TestSecretManagerReal(unittest.TestCase):
             raise ValueError("One or more required environment variables are not set.")
 
     def test_access_secret_version(self):
-        secret_id = 'GCP_OTHER_ARTICLES_BUCKET'
+        secret_id = 'neo4j_username'
 
         sm = SecretManager(service_account_info=self.service_account_config,project_id=self.project_id)
         secret = sm.access_secret_version(secret_id)

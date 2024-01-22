@@ -24,12 +24,6 @@
 ## Getting Started
 
 
-## Prerequisites
-
-
-## Installation
-
-
 ## Usage
 
 
@@ -39,4 +33,3 @@
 - Alexander Gilmore
 - Alex Fournier
 
-T

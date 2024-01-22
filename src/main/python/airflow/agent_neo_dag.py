@@ -1,3 +1,5 @@
+'''
+
 from datetime import datetime
 from airflow import DAG
 from airflow.providers.docker.operators.docker import DockerOperator
@@ -27,7 +29,7 @@ run_docker_task = DockerOperator(
     image='your-image-name:your-tag',  # Replace with your Docker image name and tag
     api_version='auto',
     auto_remove=True,  # Remove the container after execution
-    command=["python", "main.py"],  # Specify the command to run inside the container
+    command=["python", "gcp_fetch_main.py"],  # Specify the command to run inside the container
     dag=dag,
 )
 
@@ -62,3 +64,6 @@ trigger_dag_task >> wait_for_trigger_completion >> run_docker_task
 
 if __name__ == "__main__":
     dag.cli()
+
+
+'''

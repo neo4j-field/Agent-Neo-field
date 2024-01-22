@@ -3,12 +3,7 @@ from uuid import uuid4
 
 from google.cloud import aiplatform
 from google.oauth2 import service_account
-# import pandas as pd
 
-from scrape import WebContentChunker
-from scrape.scraper.embedding import TextEmbeddingService
-from scrape.scraper.preprocessing import fix_neo4j_spelling
-from neo4jwriter.neo4jwriter import Neo4jWriter
 
 if __name__ == '__main__':
 
