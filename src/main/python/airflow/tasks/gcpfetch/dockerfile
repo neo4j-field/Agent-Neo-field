@@ -1,18 +1,13 @@
-# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy the 'fetcher' module from the parent directory into the container
-COPY ../fetcher/ .
+COPY libs/ libs/
 
-# Copy 'main.py' and 'requirements.txt' from the current directory into the container
-COPY main.py .
-COPY requirements.txt .
+COPY tasks/gcpfetch/ gcpfetch/
 
-# Install any needed packages specified in 'requirements.txt'
+WORKDIR /usr/src/app/gcpfetch
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Run 'main.py' when the container launches
-CMD ["python", "./main.py"]
+CMD ["python", "./gcp_fetch_main.py"]

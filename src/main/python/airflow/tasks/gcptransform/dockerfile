@@ -5,7 +5,7 @@ FROM python:3.11-slim
 WORKDIR /usr/src/app
 
 # Copy the 'fetcher' module from the parent directory into the container
-COPY ../fetcher/ .
+COPY ../../libs/ .
 
 # Copy 'main.py' and 'requirements.txt' from the current directory into the container
 COPY main.py .

@@ -1,6 +1,7 @@
 from google.cloud import storage
 from google.oauth2 import service_account
-from ..fetcher import GCPFetcher, SecretManager
+
+
 
 if __name__ == '__main__':
     secret_manager = SecretManager(project_id='neo4j-cs-team-201901')

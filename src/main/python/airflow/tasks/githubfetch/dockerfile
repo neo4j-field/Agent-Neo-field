@@ -4,12 +4,14 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy the 'fetcher' module from the parent directory into the container
-COPY ../fetcher/ .
+# Copy the 'libs' directory into the container
+COPY libs/ libs/
 
-# Copy 'main.py' and 'requirements.txt' from the current directory into the container
-COPY main.py .
-COPY requirements.txt .
+# Copy the contents of 'tasks/gcpfetch' directory into the container
+COPY tasks/gcpfetch/ gcpfetch/
+
+# Set the working directory to the 'gcpfetch' directory inside the container
+WORKDIR /usr/src/app/gcpfetch
 
 # Install any needed packages specified in 'requirements.txt'
 RUN pip install --no-cache-dir -r requirements.txt
