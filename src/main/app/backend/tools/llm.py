@@ -1,11 +1,13 @@
 import os
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 import openai
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
-from langchain.chains import ConversationChain
+# from langchain.chains import ConversationChain
+import pandas as pd
 from pydantic import BaseModel
-from vertexai.preview.language_models import TextEmbeddingModel
+
+from resources.prompts.prompts import prompt_no_context_template, prompt_template
 
 class LLM(BaseModel):
     """
@@ -13,6 +15,7 @@ class LLM(BaseModel):
     """
 
     llm_name: str
+    llm_instance: ChatVertexAI | AzureChatOpenAI | None = None
 
     def __init__(self, *a, **kw) -> None:
         super().__init__(*a, **kw)
@@ -26,14 +29,14 @@ class LLM(BaseModel):
 
         match llm_type:
             case "chat-bison 2k":
-                return ChatVertexAI(model_name='chat-bison',
+                self.llm_instance = ChatVertexAI(model_name='chat-bison',
                         max_output_tokens=1024, # this is the max allowed
                         temperature=temperature, # default temp is 0.0
                         top_p=0.95, # default is 0.95
                         top_k = 40 # default is 40
                        )
             case "chat-bison 32k":
-                return ChatVertexAI(model_name='chat-bison-32k',
+                self.llm_instance = ChatVertexAI(model_name='chat-bison-32k',
                         max_output_tokens=8192, # this is the max allowed 
                         temperature=temperature, # default temp is 0.0
                         top_p=0.95, # default is 0.95
@@ -43,7 +46,7 @@ class LLM(BaseModel):
                 # Tokens per Minute Rate Limit (thousands): 10
                 # Rate limit (Tokens per minute): 10000
                 # Rate limit (Requests per minute): 60
-                return AzureChatOpenAI(openai_api_version=openai.api_version,
+                self.llm_instance = AzureChatOpenAI(openai_api_version=openai.api_version,
                        openai_api_key = openai.api_key,
                        openai_api_base = os.environ.get('openai_endpoint'),
                        deployment_name = os.environ.get('gpt4_8k_name'),
@@ -53,11 +56,30 @@ class LLM(BaseModel):
                 # Tokens per Minute Rate Limit (thousands): 30
                 # Rate limit (Tokens per minute): 30000
                 # Rate limit (Requests per minute): 180
-                return AzureChatOpenAI(openai_api_version=openai.api_version,
+                self.llm_instance = AzureChatOpenAI(openai_api_version=openai.api_version,
                        openai_api_key = openai.api_key,
                        openai_api_base = os.environ.get('openai_endpoint'),
                        deployment_name = os.environ.get('gpt4_32k_name'),
                        model_name = 'gpt-4-32k',
                        temperature=temperature) # default is 0.7
             case _:
-                raise ValueError
+                raise ValueError("Please provide a valid LLM type.")
+    
+    def _format_llm_input(self, question: str, context: pd.DataFrame | None = None) -> str:
+        """
+        Format the LLM input and return the input along with the context IDs if they exist.
+        """
+
+        if context is not None:
+            return prompt_template.format(question=question, context=context[['url', 'text']].to_dict('records'))
+        else:
+            return prompt_no_context_template.format(question=question)
+            
+    def get_response(self, question: str, context: pd.DataFrame | None = None) -> str:
+        """
+        Get a response from the LLM.
+        """
+
+        llm_input = self._format_llm_input(question=question, context=context)
+
+        return self.llm_instance.predict(llm_input)
