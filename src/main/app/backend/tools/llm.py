@@ -9,16 +9,23 @@ from pydantic import BaseModel
 
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
 
+from tools.secret_manager import SecretManager
+
+sm = SecretManager()
+
 class LLM(BaseModel):
     """
     Interface for interacting with different LLMs.
     """
 
-    llm_name: str
+    llm_type: str
+    temperature: float = 0.7
     llm_instance: ChatVertexAI | AzureChatOpenAI | None = None
 
     def __init__(self, *a, **kw) -> None:
         super().__init__(*a, **kw)
+
+        self._init_llm(llm_type=self.llm_type, temperature=self.temperature)
         
     def _init_llm(self, llm_type: str, temperature: float):
         """
@@ -48,8 +55,8 @@ class LLM(BaseModel):
                 # Rate limit (Requests per minute): 60
                 self.llm_instance = AzureChatOpenAI(openai_api_version=openai.api_version,
                        openai_api_key = openai.api_key,
-                       openai_api_base = os.environ.get('openai_endpoint'),
-                       deployment_name = os.environ.get('gpt4_8k_name'),
+                       openai_api_base = sm.access_secret_version('openai_endpoint'),
+                       deployment_name = sm.access_secret_version('gpt4_8k_name'),
                        model_name = 'gpt-4',
                        temperature=temperature) # default is 0.7
             case "GPT-4 32k":
@@ -58,8 +65,8 @@ class LLM(BaseModel):
                 # Rate limit (Requests per minute): 180
                 self.llm_instance = AzureChatOpenAI(openai_api_version=openai.api_version,
                        openai_api_key = openai.api_key,
-                       openai_api_base = os.environ.get('openai_endpoint'),
-                       deployment_name = os.environ.get('gpt4_32k_name'),
+                       openai_api_base = sm.access_secret_version('openai_endpoint'),
+                       deployment_name = sm.access_secret_version('gpt4_32k_name'),
                        model_name = 'gpt-4-32k',
                        temperature=temperature) # default is 0.7
             case _:
@@ -71,10 +78,12 @@ class LLM(BaseModel):
         """
 
         if context is not None:
+            print("creating context prompt...")
             return prompt_template.format(question=question, context=context[['url', 'text']].to_dict('records'))
         else:
+            print("creating non-context prompt...")
             return prompt_no_context_template.format(question=question)
-            
+                    
     def get_response(self, question: str, context: pd.DataFrame | None = None) -> str:
         """
         Get a response from the LLM.
@@ -82,4 +91,5 @@ class LLM(BaseModel):
 
         llm_input = self._format_llm_input(question=question, context=context)
 
+        print("llm input: ", llm_input)
         return self.llm_instance.predict(llm_input)

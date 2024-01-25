@@ -27,12 +27,15 @@ async def get_response(question: Question) -> Response:
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
     """
     
-    question_embedding = await TextEmbeddingService().get_embedding(question=question)
-    context = await reader.retrieve_context_documents(question_embedding=question_embedding)
+    question_embedding = TextEmbeddingService().get_embedding(text=question.question)
+    context = reader.retrieve_context_documents(question_embedding=question_embedding)
+    print(context)
 
-    llm = LLM(llm_type="GPT-4 8k")
+    llm = LLM(llm_type="GPT-4 8k", temperature=question.temperature)
 
-    response = await Response(llm.get_response(question=question, context=context))
+    response = Response(session_id=question.session_id, 
+                        conversation_id=question.conversation_id, 
+                        content=llm.get_response(question=question.question, context=context))
 
     # user_message = UserMessage()
     # assistant_message = AssistantMessage()

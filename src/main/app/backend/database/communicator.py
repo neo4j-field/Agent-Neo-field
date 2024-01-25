@@ -253,7 +253,7 @@ class GraphReader(Communicator):
                             YIELD node AS vDocs, score
                             return vDocs.url as url, vDocs.text as text, vDocs.index as index
                             """, questionEmbedding=question_embedding, k=number_of_context_documents
-                        )
+                        ).values()
         
 
         # get documents from Neo4j database
@@ -269,5 +269,5 @@ class GraphReader(Communicator):
         print("Neo4j retrieval time: "+str(round(time.perf_counter()-neo4j_timer_start, 4))+" seconds.")
 
 
-        return docs
+        return pd.DataFrame(docs, columns=["url", "text", "index"])
     
