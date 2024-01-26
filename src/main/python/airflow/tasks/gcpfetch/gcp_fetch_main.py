@@ -1,19 +1,21 @@
 from google.cloud import storage
 
-from src.main.python.airflow import SecretManager
-from src.main.python.airflow import GCPFetcher
+# from src.main.python.airflow import SecretManager
+# from src.main.python.airflow import GCPFetcher
+from libs.fetcher.secret_manager import SecretManager
+from libs.fetcher.gcp_fetcher import GCPFetcher
 
 if __name__ == '__main__':
 
 
 
 
-    secret_manager = SecretManager(project_id='neo4j-cs-team-201901')
+    secret_manager = SecretManager(project_id='sales-eng-agent-neo-project')
 
 
     gcp_client = storage.Client()
 
-    fetcher = GCPFetcher(client=gcp_client, secret_manager=secret_manager)
+    fetcher = GCPFetcher(storage_client=gcp_client, secret_client=secret_manager)
 
     sitemaps_bucket = secret_manager.access_secret_version('GCP_SITEMAPS_BUCKET')
     practitioners_bucket = secret_manager.access_secret_version('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')

@@ -1,13 +1,13 @@
 FROM python:3.11-slim
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY ../../libs/* libs/
-
-COPY gcpfetch/ gcpfetch/
-
-WORKDIR /usr/src/app/gcpfetch
+COPY tasks/gcpfetch .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python", "./gcp_fetch_main.py"]
+COPY libs libs/
+
+ENV PORT=8080
+
+CMD ["python3", "gcp_fetch_main.py"]
