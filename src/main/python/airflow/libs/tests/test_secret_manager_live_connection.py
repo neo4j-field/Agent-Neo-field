@@ -39,7 +39,7 @@ class TestSecretManagerReal(unittest.TestCase):
         sm = SecretManager(service_account_info=self.service_account_config,project_id=self.project_id)
         secret = sm.access_secret_version(secret_id)
 
-        git_fetcher = GitHubFetcher()
+        print(secret)
 
 
 
