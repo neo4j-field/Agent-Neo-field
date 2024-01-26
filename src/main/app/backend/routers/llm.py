@@ -29,7 +29,7 @@ async def get_response(question: Question) -> Response:
     
     question_embedding = TextEmbeddingService().get_embedding(text=question.question)
     context = reader.retrieve_context_documents(question_embedding=question_embedding)
-    print(context)
+    # print(context)
 
     llm = LLM(llm_type="GPT-4 8k", temperature=question.temperature)
 
