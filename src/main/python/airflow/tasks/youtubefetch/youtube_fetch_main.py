@@ -1,6 +1,6 @@
+'''
 import os
 from uuid import uuid4
-
 from google.cloud import aiplatform
 from google.oauth2 import service_account
 
@@ -50,3 +50,6 @@ if __name__ == '__main__':
     writer.batch_write(cypher_query=query, params=new_nodes, batch_size=1000)
 
     print("YouTube transcript chunks uploaded to graph successfully.")
+
+
+'''

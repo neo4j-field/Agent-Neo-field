@@ -1,6 +1,9 @@
 from google.cloud import storage
 from google.oauth2 import service_account
-from ..fetcher import GCPFetcher, SecretManager
+from src.main.python.airflow import GCPFetcher
+from src.main.python.airflow import SecretManager
+
+
 
 if __name__ == '__main__':
     secret_manager = SecretManager(project_id='neo4j-cs-team-201901')
@@ -10,3 +13,4 @@ if __name__ == '__main__':
     credentials = service_account.Credentials.from_service_account_info(service_account_info)
 
     gcp_client = storage.Client(credentials=credentials)
+

@@ -1,10 +1,10 @@
 import unittest
 import json
+from google.cloud import storage
+from ..fetcher import SecretManager, GitHubFetcher
+from google.oauth2 import service_account
 
-from ..fetcher import SecretManager,GitHubFetcher
-
-
-class TestSecretManagerReal(unittest.TestCase):
+class TestGitConnectionReal(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -19,30 +19,21 @@ class TestSecretManagerReal(unittest.TestCase):
         cls.gcp_processed_docs = config.get('GCP_PROCESSED_DOCS')
         cls.project_id = config.get('GCP_PROJECT_ID')
         cls.service_account_config = config.get('GOOGLE_SERVICE_ACCOUNT')
+        cls.github_access_token = config.get('GITHUB_ACCESS_TOKEN')
 
 
-        required_vars = [
-            cls.gcp_sitemaps_bucket,
-            cls.gcp_practitioners_guide_sites_bucket,
-            cls.gcp_other_articles_bucket,
-            cls.gcp_processed_docs,
-            cls.project_id,
-            cls.service_account_config
-        ]
+    def test_git_connection_print_repos(self):
 
-        if not all(required_vars):
-            raise ValueError("One or more required environment variables are not set.")
 
-    def test_access_secret_version(self):
-        secret_id = 'GITHUB_ACCESS_TOKEN'
+        print(self.service_account_config)
 
         sm = SecretManager(service_account_info=self.service_account_config,project_id=self.project_id)
-        secret = sm.access_secret_version(secret_id)
 
-        git_fetcher = GitHubFetcher()
+        git_fetcher = GitHubFetcher(secret_client=sm)
 
+        repos = git_fetcher.list_github_repos('Neo4j')
 
-
+        print(repos)
 
 
 if __name__ == '__main__':

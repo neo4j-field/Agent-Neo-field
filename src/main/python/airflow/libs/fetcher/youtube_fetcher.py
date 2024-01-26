@@ -3,7 +3,12 @@ from .secret_manager import SecretManager
 from google.cloud import storage
 from google.oauth2 import service_account
 from typing import List,Dict, Callable, Tuple
-from langchain import UnstructuredURLLoader,Document,CharacterTextSplitter
+from langchain_community.document_loaders import UnstructuredURLLoader
+from langchain.docstore.document import Document
+from langchain.text_splitter import TokenTextSplitter
+import os
+import pandas as pd
+
 
 
 class YoutubeFetcher(BaseFetcher):
@@ -198,6 +203,7 @@ class GCPStorageLoader:
 
         return videos_list
 
+    #todo: temporarily breaking
     @staticmethod
     def _create_transcript(video_id: str) -> str:
         """
@@ -205,12 +211,12 @@ class GCPStorageLoader:
         Returns a string representation of the video transcript.
         """
 
-        raw_transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        #raw_transcript = YouTubeTranscriptApi.get_transcript(video_id)
         # instantiate the text formatter
         formatter = TextFormatter()
 
         # format the video into a string without timestamps, etc...
-        transcript_formatted = formatter.format_transcript(raw_transcript)
+        transcript_formatted = formatter.format_transcript('')
 
         # replace newlines with a space
 

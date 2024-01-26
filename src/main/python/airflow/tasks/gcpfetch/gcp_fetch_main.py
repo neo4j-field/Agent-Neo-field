@@ -1,5 +1,7 @@
 from google.cloud import storage
-from libs.fetcher import GCPFetcher, SecretManager
+
+from src.main.python.airflow import SecretManager
+from src.main.python.airflow import GCPFetcher
 
 if __name__ == '__main__':
 
