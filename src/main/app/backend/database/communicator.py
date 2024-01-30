@@ -4,17 +4,19 @@ from typing import List, Optional
 
 import uuid
 
-from graphdatascience import GraphDataScience
+# from graphdatascience import GraphDataScience
 
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts.prompt import PromptTemplate
+from neo4j.exceptions import ConstraintError
 import openai
 import pandas as pd
 
 from database import drivers
 from tools.secret_manager import SecretManager
+from objects.nodes import UserMessage, AssistantMessage
 
 
 PUBLIC = 'false'
@@ -49,150 +51,133 @@ class Communicator:
         self.project = os.getenv('GCP_PROJECT_ID')
         self.region = self.sm.access_secret_version('gcp_region')
 
-# class GraphWriter(Communicator):
+class GraphWriter(Communicator):
 
-#     def __init__(self) -> None:
-#         super().__init__()
+    def __init__(self) -> None:
+        super().__init__()
     
-#     def log_new_conversation(self, llm, user_input):
-#         """
-#         This method creates a new conversation node and logs the 
-#         initial user message in the neo4j database.
-#         Appropriate relationships are created.
-#         """
+    def log_new_conversation(self, message: UserMessage, llm_type: str, temperature: float) -> None:
+        """
+        This method creates a new conversation node and logs the 
+        initial user message in the neo4j database.
+        Appropriate relationships are created.
+        """
 
-#         log_timer_start = time.perf_counter()
+        print('logging new conversation...')
 
-#         print('logging new conversation...')
-#         messId = 'user-'+str(uuid.uuid4())
-#         convId = 'conv-'+str(uuid.uuid4())
+        print('convId: ', message.conversation_id)
 
-#         print('convId: ', convId)
-
-#         def log(tx):
-#             tx.run("""
-#             create (c:Conversation)-[:FIRST]->(m:Message)
-#             set c.id = $convId, c.llm = $llm,
-#                 c.temperature = $temperature,
-#                 c.public = toBoolean($public),
-#                 m.id = $messId, m.content = $content,
-#                 m.role = $role, m.postTime = datetime(),
-#                 m.embedding = $embedding,
-#                 m.public = toBoolean($public)
+        def log(tx):
+            tx.run("""
+            create (c:Conversation)-[:FIRST]->(m:Message)
+            set c.id = $convId, c.llm = $llm,
+                c.temperature = $temperature,
+                c.public = toBoolean($public),
+                m.id = $messId, m.content = $content,
+                m.role = $role, m.postTime = datetime(),
+                m.embedding = $embedding,
+                m.public = toBoolean($public)
             
-#             with c
-#             merge (s:Session {id: $sessionId})
-#             on create set s.createTime = datetime()
-#             merge (s)-[:HAS_CONVERSATION]->(c)
-#                       """, convId=convId, llm=llm, messId=messId, 
-#                            temperature=st.session_state['temperature'],
-#                            content=user_input, role='user', sessionId=st.session_state['session_id'], 
-#                            embedding=st.session_state['recent_question_embedding'],
-#                            public=PUBLIC)
-        
-#         # update the latest message in the log chain
-#         st.session_state['latest_message_id'] = messId
-
-#         try:
-#             with self.driver.session(database=self.database_name) as session:
-#                 session.execute_write(log)
+            with c
+            merge (s:Session {id: $sessionId})
+            on create set s.createTime = datetime()
+            merge (s)-[:HAS_CONVERSATION]->(c)
+                      """,  sessionId=message.session_id, 
+                            convId=message.conversation_id, 
+                            messId=message.message_id, 
+                            llm=llm_type, 
+                            temperature=temperature,
+                            content=message.content, 
+                            embedding=message.embedding,
+                            role='user', 
+                            public=PUBLIC)
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                session.execute_write(log)
             
-#         except ConstraintError as err:
-#             print(err)
+        except ConstraintError as err:
+            print(err)
 
-#             session.close() 
+            session.close() 
 
-#         print('conversation init & user log time: '+str(round(time.perf_counter()-log_timer_start, 4))+" seconds.")
+    def log_user(self, message: UserMessage, previous_message_id: str) -> None:
+        """
+        This method logs a new user message to the neo4j database and 
+        creates appropriate relationships.
+        """
 
-#     def log_user(self, user_input):
-#         """
-#         This method logs a new user message to the neo4j database and 
-#         creates appropriate relationships.
-#         """
+        print('logging user message...')
 
-#         log_timer_start = time.perf_counter()
-#         print('logging user message...')
-#         prevMessId = st.session_state['latest_message_id']
-#         messId = 'user-'+str(uuid.uuid4())
-
-#         def log(tx):
-#             tx.run("""
-#             match (pm:Message {id: $prevMessId})
-#             merge (m:Message {id: $messId})
-#             set m.content = $content,
-#                 m.role = $role, m.postTime = datetime(),
-#                 m.embedding = $embedding, m.public = toBoolean($public)
+        def log(tx):
+            tx.run("""
+            match (pm:Message {id: $prevMessId})
+            merge (m:Message {id: $messId})
+            set m.content = $content,
+                m.role = $role, m.postTime = datetime(),
+                m.embedding = $embedding, m.public = toBoolean($public)
                    
-#             merge (pm)-[:NEXT]->(m)
-#                       """, prevMessId=prevMessId, messId=messId, content=user_input, role='user',
-#                            embedding=st.session_state['recent_question_embedding'], public=PUBLIC)
-        
-#         # update the latest message in the log chain
-#         st.session_state['latest_message_id'] = messId
+            merge (pm)-[:NEXT]->(m)
+                      """,  prevMessId=previous_message_id, 
+                            messId=message.message_id, 
+                            content=message.content,
+                            embedding=message.content, 
+                            role='user',
+                            public=PUBLIC)
 
-#         try:
-#             with self.driver.session(database=self.database_name) as session:
-#                 session.execute_write(log)
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                session.execute_write(log)
             
-#         except ConstraintError as err:
-#             print(err) 
+        except ConstraintError as err:
+            print(err) 
 
-#         print('user log time: '+str(round(time.perf_counter()-log_timer_start, 4))+" seconds.")
+    def log_assistant(self, message: AssistantMessage, previous_message_id: str, context_ids: List[str]):
+        """
+        This method logs a new assistant message to the neo4j database and 
+        creates appropriate relationships.
+        """
 
-#     def log_assistant(self, assistant_output, context_indices):
-#         """
-#         This method logs a new assistant message to the neo4j database and 
-#         creates appropriate relationships.
-#         """
+        print('logging llm message...')
 
-#         log_timer_start = time.perf_counter()
+        mem = "None"
 
-#         print('logging llm message...')
-#         prevMessId = st.session_state['latest_message_id']
-#         messId = 'llm-'+str(uuid.uuid4())
-
-#         mem = st.session_state['llm_memory'].moving_summary_buffer
-
-#         def log(tx):
-#             tx.run("""
-#             match (pm:Message {id: $prevMessId})
-#             merge (m:Message {id: $messId})
-#             set m.content = $content,
-#                 m.role = $role, m.postTime = datetime(),
-#                 m.numDocs = $numDocs,
-#                 m.vectorIndexSearch = true,
-#                 m.prompt = $prompt,
-#                 m.public = toBoolean($public),
-#                 m.resultingSummary = $resultingSummary
+        def log(tx):
+            tx.run("""
+            match (pm:Message {id: $prevMessId})
+            merge (m:Message {id: $messId})
+            set m.content = $content,
+                m.role = $role, m.postTime = datetime(),
+                m.numDocs = $numDocs,
+                m.vectorIndexSearch = true,
+                m.prompt = $prompt,
+                m.public = toBoolean($public),
+                m.resultingSummary = $resultingSummary
                    
-#             merge (pm)-[:NEXT]->(m)
+            merge (pm)-[:NEXT]->(m)
 
-#             with m
-#             unwind $contextIndices as contextIdx
-#             match (d:Document)
-#             where d.index = contextIdx
+            with m
+            unwind $contextIndices as contextIdx
+            match (d:Document)
+            where d.index = contextIdx
 
-#             with m, d
-#             merge (m)-[:HAS_CONTEXT]->(d)
-#                     """, prevMessId=str(prevMessId), messId=str(messId), content=str(assistant_output), 
-#                     role='assistant', contextIndices=context_indices, 
-#                     numDocs=st.session_state['num_documents_for_context'], 
-#                     prompt=st.session_state['general_prompt'],
-#                     resultingSummary=mem,
-#                     public=PUBLIC)
+            with m, d
+            merge (m)-[:HAS_CONTEXT]->(d)
+                    """,    prevMessId=previous_message_id, 
+                            messId=message.message_id, 
+                            content=message.content, 
+                            role='assistant', 
+                            contextIndices=context_ids, 
+                            numDocs=message.number_of_documents, 
+                            prompt=message.prompt,
+                            resultingSummary=mem,
+                            public=PUBLIC)
+
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                session.execute_write(log)
             
-#         # update the latest message in the log chain
-#         st.session_state['latest_message_id'] = messId
-#         st.session_state['latest_llm_message_id'] = messId
-
-#         try:
-#             with self.driver.session(database=self.database_name) as session:
-#                 session.execute_write(log)
-            
-#         except ConstraintError as err:
-#             print(err) 
-
-#         print('assistant log time: '+str(round(time.perf_counter()-log_timer_start, 4))+" seconds.")
+        except ConstraintError as err:
+            print(err) 
 
 #     def rate_message(self, rating_dict):
 #         """

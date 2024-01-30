@@ -11,6 +11,7 @@ class Response(BaseModel):
     session_id: str
     conversation_id: str
     content: str
-
+    message_history: List[str]
+    
     def __init__(self, *a, **kw) -> None:
         super().__init__(*a, **kw)

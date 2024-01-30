@@ -11,7 +11,8 @@ class Question(BaseModel):
     session_id: str
     conversation_id: str
     question: str
-    conversation_history: str
+    conversation_history: str = ""
+    message_history: List[str] | None = []
     llm_type: str
     number_of_documents: int
     temperature: float
