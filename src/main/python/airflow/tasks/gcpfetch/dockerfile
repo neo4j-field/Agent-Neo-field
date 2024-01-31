@@ -2,11 +2,16 @@ FROM python:3.11-slim
 
 WORKDIR /usr/src/app
 
-COPY ../../libs/* libs/
+COPY ../../libs libs/
 
-COPY gcpfetch/ gcpfetch/
 
-WORKDIR /usr/src/app/gcpfetch
+WORKDIR /usr/src/app/
+
+COPY tasks/gcpfetch/requirements.txt .
+
+COPY tasks/gcpfetch/gcp_fetch_main.py .
+
+WORKDIR /usr/src/app/
 
 RUN pip install --no-cache-dir -r requirements.txt
 

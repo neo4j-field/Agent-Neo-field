@@ -7,9 +7,8 @@ from google.cloud import secretmanager
 
 
 class SecretManager:
-    def __init__(self, service_account_info: Optional[Union[str, Dict]] = None, project_id: Optional[str] = None):
+    def __init__(self, service_account_info: Optional[Union[str, Dict]] = None, project_id: Optional[str] = "sales-eng-agent-neo-project"):
         self.project_id = project_id
-
         if service_account_info:
             if isinstance(service_account_info, str):
                 # Decode the base64-encoded string

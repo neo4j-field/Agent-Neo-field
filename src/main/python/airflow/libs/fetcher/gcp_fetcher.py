@@ -6,6 +6,7 @@ from .base_fetcher import BaseFetcher
 import requests
 from bs4 import BeautifulSoup
 from .secret_manager import SecretManager
+from itertools import chain
 
 
 class GCPFetcher(BaseFetcher):
@@ -68,7 +69,7 @@ class GCPFetcher(BaseFetcher):
         urls = [element.text for element in soup.find_all("loc")]
         return urls
 
-    def _parse_sitemaps_tolist(self,sitemaps: List[str]) -> List[str]:
+    def parse_sitemaps_tolist(self,sitemaps: List[str]) -> List[str]:
         neo4j_doc_sites = []
 
         for sitemap in sitemaps:
@@ -79,6 +80,24 @@ class GCPFetcher(BaseFetcher):
 
         return neo4j_doc_sites
 
+    def extract_list_from_json(self,json_data: dict, key: str = None) -> list:
+        if key:
+            return json_data.get(key, [])
+        elif len(json_data) == 1:
+            single_key = next(iter(json_data.keys()))
+            if isinstance(json_data[single_key], list):
+                return json_data[single_key]
+        return []
+
+    def concatenate_unique_ordered(self,*lists: List[Any]) -> List[Any]:
+        seen = set()
+        result = []
+        for item in chain.from_iterable(
+                lists):
+            if item not in seen:
+                seen.add(item)
+                result.append(item)
+        return result
 
     def write_to_gcs(self, data: List[str] = None, bucket_name: str = None, file_name: str = None):
         """

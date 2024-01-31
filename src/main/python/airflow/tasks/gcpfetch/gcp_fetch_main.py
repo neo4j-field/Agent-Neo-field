@@ -1,19 +1,17 @@
 from google.cloud import storage
 
-from src.main.python.airflow import SecretManager
-from src.main.python.airflow import GCPFetcher
+from libs.fetcher.secret_manager import SecretManager
+from libs.fetcher.gcp_fetcher import GCPFetcher
 
 if __name__ == '__main__':
 
 
 
-
-    secret_manager = SecretManager(project_id='neo4j-cs-team-201901')
-
+    secret_manager = SecretManager()
 
     gcp_client = storage.Client()
 
-    fetcher = GCPFetcher(client=gcp_client, secret_manager=secret_manager)
+    fetcher = GCPFetcher()
 
     sitemaps_bucket = secret_manager.access_secret_version('GCP_SITEMAPS_BUCKET')
     practitioners_bucket = secret_manager.access_secret_version('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')
@@ -34,4 +32,4 @@ if __name__ == '__main__':
 
     output_file_name = 'all_assets.txt'
 
-    fetcher.write_to_gcs(data=all_assets,bucket_name=processed_docs_bucket, output_file_name=output_file_name)
+    fetcher.write_to_gcs(data=all_assets, bucket_name=processed_docs_bucket, file_name=output_file_name)
