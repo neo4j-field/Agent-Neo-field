@@ -17,7 +17,7 @@ router = APIRouter()
 reader = GraphReader()
 writer = GraphWriter()
 
-@router.get("/llm_dummy", response_model=Response)
+@router.post("/llm_dummy", response_model=Response)
 async def get_response(question: Question, background_tasks: BackgroundTasks) -> Response:
     """
     Dummy test.
@@ -51,7 +51,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
                     message_history=question.message_history+[user_message.message_id, assistant_message.message_id])
 
 
-@router.get("/llm", response_model=Response)
+@router.post("/llm", response_model=Response)
 async def get_response(question: Question, background_tasks: BackgroundTasks) -> Response:
     """
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
