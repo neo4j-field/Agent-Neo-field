@@ -1,16 +1,20 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App';
+import { v4 as uuidv4 } from 'uuid';
 
 function ChatInterface() {
+  
   const { settings } = useContext(AppContext);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
+  const [sessionId] = useState(() => `s-${uuidv4()}`);
+  const [conversationId] = useState(() => `conv-${uuidv4()}`);
 
   // Asynchronous function to call our API
   const fetchResponseFromAPI = async (inputText) => {
     const requestBody = {
-      session_id: "s-123",
-      conversation_id: "conv-124",
+      session_id: sessionId,
+      conversation_id: conversationId,
       question: inputText,
       llm_type: settings.selectedLLM,
       temperature: settings.temperature,
