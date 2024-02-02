@@ -17,6 +17,7 @@
 /* Sidebar Styling */
 .sidebar {
   width: 250px;
+  flex-shrink: 0;
   padding: 20px;
   border-right: 1px solid #ccc;
   overflow-y: auto; /* For scrolling if the content is too long */
@@ -54,7 +55,7 @@
   padding: 8px;
   border-radius: 8px;
   background-color: #f0f0f0;
-  max-width: 70%;
+  max-width: 96%;
 }
 
 .message.user {

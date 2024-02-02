@@ -1,5 +1,6 @@
 import React, { createContext, useState }
- from 'react';
+from 'react';
+
 import Sidebar from './components/Sidebar'; // Ensure you create Sidebar.js
 import ChatInterface from './components/ChatInterface'; // Ensure you create ChatInterface.js
 import './App.css'; // Ensure we add styling
