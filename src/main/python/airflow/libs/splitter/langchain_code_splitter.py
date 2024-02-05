@@ -53,12 +53,12 @@ class LangchainCodeSplitter(BaseSplitter[str, str]):
             return  # Skip the file if its language is not recognized
 
         content = self.storage_client.bucket(bucket_name).blob(file_path).download_as_text()
-        content_as_list = content.splitlines()  # Adjust this based on how you want to split the content
+        content_as_list = [content]  # Keep the entire content as a single string in a list
         for processed_chunk in self.split(content_as_list, language=language, **kwargs):
             yield processed_chunk
 
     def split(self, input_data: List[str], **kwargs) -> List[Document]:
-        chunk_size = kwargs.get('chunk_size', 100)
+        chunk_size = kwargs.get('chunk_size', 250)
         chunk_overlap = kwargs.get('chunk_overlap', 0)
         language = kwargs.get('language')
 
