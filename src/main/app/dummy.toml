@@ -1,0 +1,30 @@
+openai_key = "key"
+openai_version = "version"
+openai_endpoint = "address"
+gpt4_8k_name = "name"
+gpt4_32k_name = "name"
+
+langsmith_api_key = "ls__key"
+
+gcp_project = "n4j project"
+gcp_region = "region"
+
+[google_service_account]
+type = "service_account"
+project_id = "n4j project"
+private_key_id = "private key"
+private_key = "-----BEGIN PRIVATE KEY-----\nkey\n-----END PRIVATE KEY-----\n"
+client_email = "sa email"
+client_id = "id"
+auth_uri = "uri"
+token_uri = "uri"
+auth_provider_x509_cert_url = "url"
+client_x509_cert_url = "url"
+universe_domain = "domain"
+
+[neo4j_credentials]
+username = "un"
+password = "pw"
+database = "db"
+uri = "uri"
+
