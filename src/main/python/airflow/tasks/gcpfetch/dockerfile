@@ -1,0 +1,18 @@
+FROM python:3.11-slim
+
+WORKDIR /usr/src/app
+
+COPY ../../libs libs/
+
+
+WORKDIR /usr/src/app/
+
+COPY tasks/gcpfetch/requirements.txt .
+
+COPY tasks/gcpfetch/gcp_fetch_main.py .
+
+WORKDIR /usr/src/app/
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["python", "./gcp_fetch_main.py"]

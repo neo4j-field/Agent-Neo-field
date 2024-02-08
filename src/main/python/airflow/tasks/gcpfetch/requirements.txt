@@ -1,0 +1,9 @@
+google-cloud-storage>=1.42.0
+requests>=2.26.0
+bs4==0.0.2
+beautifulsoup4==4.12.3
+google-cloud-secret-manager>=2.7.0
+python-dotenv==1.0.0
+google-auth==2.26.2
+lxml==5.0.0
+
