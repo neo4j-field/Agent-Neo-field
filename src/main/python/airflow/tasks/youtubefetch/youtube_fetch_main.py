@@ -1,3 +1,60 @@
+from google.cloud import storage
+import json
+
+import pandas as pd
+
+from google.oauth2 import service_account
+from libs.fetcher.secret_manager import SecretManager
+from libs.fetcher.youtube_fetcher import YoutubeFetcher
+
+
+
+if __name__ == "__main__":
+    secret_manager = SecretManager(project_id='sales-eng-agent-neo-project')
+
+    service_account_info = secret_manager.access_secret_version('GCP_SERVICE_ACCOUNT')
+
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
+
+    gcp_client = storage.Client(credentials=credentials)
+    loader = YoutubeFetcher(storage_client=gcp_client, secret_client=secret_manager)
+
+    bucket = gcp_client.get_bucket("agent-neo-youtube")
+    # with open("scrape/scraper/resources/youtube_playlist_ids.json") as json_file:
+    #     playlists = json.load(json_file)
+    playlists = bucket.get_blob("youtube_playlist_ids.json")
+    playlists = json.loads(playlists.download_as_string())
+
+    for title, id in playlists.items():
+        # set playlist id
+        loader.playlist_id = id
+        loader._scraped_video_info = None
+        print(title)
+        print(loader.playlist_id)
+
+        print("creating CSV file with video info...")
+        # scrape video info for playlist
+        loader.scrape_video_info(videos=[])
+
+        print("uploading CSV file to Storage...")
+        # upload to Storage
+        loader.upload_scraped_video_info(file_name=title)
+
+        print("Creating and uploading transcripts...")
+        # create and upload transcripts
+        loader.create_and_upload_neo4j_transcripts(transcripts_folder=title, video_info_file_name=title)
+
+
+
+
+
+
+
+
+
+
+
+
 '''
 import os
 from uuid import uuid4

@@ -4,15 +4,29 @@ FROM python:3.11-slim
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
+# Copy the 'libs' directory into the container
+COPY libs/ libs/
+
+# Copy the contents of 'tasks/gcpfetch' directory into the container
+COPY tasks/youtubetransform/ youtubetransform/
+
+
 # Copy the 'fetcher' module from the parent directory into the container
-COPY ../fetcher/ .
+# COPY ../transformer/youtube_transformer.py .
+# COPY ../neo4jwriter/neo4jwriter.py .
+# COPY ../embedding/embedding.py .
+
 
 # Copy 'main.py' and 'requirements.txt' from the current directory into the container
-COPY main.py .
-COPY requirements.txt .
+# COPY youtube_transform_main.py .
+# COPY requirements.txt .
+# COPY helpers.py .
+
+# Set the working directory to the 'gcpfetch' directory inside the container
+WORKDIR /usr/src/app/youtubetransform
 
 # Install any needed packages specified in 'requirements.txt'
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run 'main.py' when the container launches
-CMD ["python", "./main.py"]
+CMD ["python", "./youtube_transform_main.py"]
