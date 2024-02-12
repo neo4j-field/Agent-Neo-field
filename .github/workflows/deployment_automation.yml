@@ -1,4 +1,4 @@
-name: Deploy Agent Neo FE to Cloud run
+name: Deploy to Google Cloud Run
 
 on:
   push:
@@ -25,11 +25,18 @@ jobs:
         run: gcloud auth configure-docker
 
       - name: Build Docker image
-        run: docker build -t gcr.io/sales-eng-agent-neo-project/agent-neo-react-fe:latest .
+        run: |
+          docker build -t gcr.io/sales-eng-agent-neo-project/agent-neo-react-fe:latest -f src/main/app/frontend/Dockerfile src/main/app/frontend
 
       - name: Push Docker image to Google Container Registry
-        run: docker push gcr.io/sales-eng-agent-neo-project/agent-neo-react-fe:latest
+        run: |
+          docker push gcr.io/sales-eng-agent-neo-project/agent-neo-react-fe:latest
 
       - name: Deploy to Google Cloud Run
         run: |
           gcloud run deploy agent-neo-react-fe --image gcr.io/sales-eng-agent-neo-project/agent-neo-react-fe:latest --region us-central1 --platform managed --allow-unauthenticated
+        env:
+          PROJECT_ID: sales-eng-agent-neo-project
+          IMAGE_NAME: agent-neo-react-fe
+          REGION: us-central1
+          SERVICE_NAME: agent-neo-react-fe
