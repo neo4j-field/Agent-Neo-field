@@ -22,7 +22,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     """
     Dummy test.
     """
-
+    print("dummy test")
     question_embedding = [0.321, 0.123]
     llm_response = "This call works!"
 
@@ -57,14 +57,16 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
     """
     
+    print("real call")
     question_embedding = TextEmbeddingService().get_embedding(text=question.question)
+    print("got embedding...")
     context = reader.retrieve_context_documents(question_embedding=question_embedding)
     # print(context)
-
+    print("context retrieved...")
     llm = LLM(llm_type="GPT-4 8k", temperature=question.temperature)
-
+    print("llm initialized...")
     llm_response = llm.get_response(question=question.question, context=context)
-
+    print("response retrieved...")
     user_message = UserMessage(session_id=question.session_id,
                                conversation_id=question.conversation_id,
                                content=question.question,
@@ -82,7 +84,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
 
     background_tasks.add_task(log_user_message, user_message, question.message_history, question.llm_type, question.temperature)
     background_tasks.add_task(log_assistant_message, assistant_message, user_message.message_id, list(context['index']))
-    
+    print("returning...")
     return  Response(   session_id=question.session_id, 
                         conversation_id=question.conversation_id, 
                         content=llm_response,
