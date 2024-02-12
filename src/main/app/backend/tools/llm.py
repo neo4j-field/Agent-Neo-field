@@ -2,7 +2,7 @@ import os
 from typing import List, Dict, Tuple
 
 import openai
-from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain_community.chat_models import ChatVertexAI, AzureChatOpenAI
 # from langchain.chains import ConversationChain
 import pandas as pd
 from pydantic import BaseModel
