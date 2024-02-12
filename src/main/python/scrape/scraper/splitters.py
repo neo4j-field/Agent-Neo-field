@@ -1,8 +1,10 @@
 import re
 from typing import List
+import ast
 
 
-#TODO: Implement more complex Splitters based on research
+#TODO
+#11.18 worth looking into an ABC/inteface for these two classes.
 class RegexTextSplitter:
 
     def __init__(self, pattern: str):
@@ -19,3 +21,22 @@ class RegexTextSplitter:
                     new_doc.page_content = chunk
                     split_docs.append(new_doc)
         return split_docs
+
+
+
+class CodeSplitter:
+    def __init__(self, code:str):
+        self.tree = ast.parse(code)
+
+    def split_code(self) -> List[str]:
+        split_code = []
+        for node in ast.walk(self.tree):
+            if isinstance(node, ast.FunctionDef) or isinstance(node, ast.ClassDef):
+                func_or_class_code = ast.unparse(node)
+                split_code.append(func_or_class_code)
+        return split_code
+
+
+
+
+

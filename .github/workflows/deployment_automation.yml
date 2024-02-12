@@ -1,0 +1,12 @@
+name: Agent Neo Deployment
+
+on:
+  push:
+    branches: [master,main]
+
+  jobs:
+    build:
+      runs-on: ubuntu-latest
+
+      steps:
+        - uses:

@@ -32,7 +32,7 @@ class TestNeo4jWriter(unittest.TestCase):
         }).to_dict("records")
 
 
-        cypher_file = '/Users/alexanderfournier/Downloads/Agent-Neo-field/src/main/python/resources/cypher/documents.cypher'
+        cypher_file = '/src/main/python/resources/cypher/documents.cypher'
 
 
 

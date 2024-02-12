@@ -1,167 +1,22 @@
-import base64
-from typing import Optional, Callable, Dict, Any
-from typing import List, Tuple
-from itertools import chain
-import pandas as pd
-from langchain.document_loaders import UnstructuredURLLoader
-from langchain.schema.document import Document
-from langchain.text_splitter import CharacterTextSplitter, TokenTextSplitter
+from .base_fetcher import BaseFetcher
+from .secret_manager import SecretManager
 from google.cloud import storage
 from google.oauth2 import service_account
-from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api.formatters import TextFormatter
-import json
+from typing import List,Dict, Callable, Tuple
+from langchain_community.document_loaders import UnstructuredURLLoader
+from langchain.docstore.document import Document
+from langchain.text_splitter import TokenTextSplitter
 import os
-import io
-import requests
-import re
+import pandas as pd
 
 
-# TODO: 11/18 probably worth implementing some ABC/ interface for Fetcher and splitting out the methods associated
-#  with each data source to their own class
-class Fetcher:
-    def __init__(self, client: storage.Client = None, github_token: str = None):
-        self.client = client or storage.Client()
-        self.github_token = github_token or os.getenv('GITHUB_TOKEN')
-        self.github_token = github_token
 
-    def get_sitemap_urls(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
-        if bucket_name is None:
-            bucket_name = os.environ.get('GCP_SITEMAPS_BUCKET')
-        return self._read_from_gcp(bucket_name)
+class YoutubeFetcher(BaseFetcher):
 
-    def get_practitioner_guide_md(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
-        if bucket_name is None:
-            bucket_name = os.environ.get('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')
-        return self._read_from_gcp(bucket_name)
-
-    def get_other_articles(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
-        if bucket_name is None:
-            bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
-        return self._read_from_gcp(bucket_name)
-
-    def fetch_files_from_git_repos(self, org_name: str, repo_pattern: str):
-        file_contents = {}
-        repo_urls = self._get_git_repos_by_pattern(org_name=org_name, repo_pattern=repo_pattern)
-
-        repo_names = [repo_url.split('/')[-1].split('.')[0] for repo_url in repo_urls]
-
-        for repo_name in repo_names:
-            repo_files = self._list_repo_files(org_name=org_name, repo_name=repo_name)
-            for file_path, file_url in repo_files.items():
-                file_data = self._fetch_file_content(file_url)
-                if file_data:
-                    file_contents[f"{repo_name}/{file_path}"] = file_data
-        return file_contents
-
-    def _get_git_repos_by_pattern(self, org_name: str, repo_pattern: str) -> List[str]:
-        all_repos = self._list_github_repos(org_name=org_name)
-        return [repo for repo in all_repos if re.search(repo_pattern, repo)]
-
-    def _list_github_repos(self, org_name: str) -> List[str]:
-        headers = {'Authorization': f'token {self.github_token}'}
-        repo_urls = []
-        page = 1
-        while True:
-            response = requests.get(f'https://api.github.com/orgs/{org_name}/repos?page={page}', headers=headers)
-            data = response.json()
-            if not data:
-                break
-            repo_urls.extend([repo['clone_url'] for repo in data])
-            page += 1
-        return repo_urls
-
-    def _list_repo_files(self, org_name: str, repo_name: str) -> Dict[str, str]:
-        api_base_url = f"https://api.github.com/repos/{org_name}/{repo_name}/contents/"
-        file_paths = self._recursive_file_listing(api_base_url)
-        return file_paths
-
-    def _recursive_file_listing(self, url: str, path: str = '') -> Dict[str, str]:
-        headers = {'Authorization': f'token {self.github_token}'}
-        response = requests.get(url + path, headers=headers)
-        items = response.json()
-
-        file_paths = {}
-        if isinstance(items, list):
-            for item in items:
-                if item['type'] == 'file':
-                    file_paths[item['path']] = item['url']
-                elif item['type'] == 'dir':
-                    file_paths.update(self._recursive_file_listing(url, item['path']))
-        return file_paths
-
-    # TODO: 11.18  Handle errors more appropriately
-    def _fetch_file_content(self, file_url):
-        try:
-            response = requests.get(file_url)
-            response.raise_for_status()
-            file_data = response.content
-
-            encoding = 'iso-8859-1'
-
-            decoded_content = file_data.decode(encoding)
-
-            return decoded_content
-
-        except Exception as e:
-            # Handle any exceptions here
-            print(f"Error fetching or decoding file: {str(e)}")
-            return None
-
-    def get_youtube_video_ids(self, bucket_name: str = None) -> List[str]:
-        if bucket_name is None:
-            raise ValueError("Bucket name must be provided.")
-        bucket = self.client.get_bucket(bucket_name)
-        videos_temp = bucket.get_blob("youtube/neo4j_video_list.csv")
-        videos_temp = videos_temp.download_as_string()
-        videos_list = pd.read_csv(io.BytesIO(videos_temp))['YouTube_Address'].to_list()
-        return videos_list
-
-    def _read_from_gcp(self, bucket_name: str, blob_name: str = None) -> Dict[str, Any]:
-
-        bucket = self.client.get_bucket(bucket_name)
-
-        if not blob_name:
-            blobs = list(bucket.list_blobs())
-            if not blobs:
-                return []
-            blob_name = blobs[0].name
-
-        blob = bucket.get_blob(blob_name)
-
-        if blob is None:
-            return []
-
-        content = blob.download_as_text()
-        data = json.loads(content)
-        return data
-
-    @staticmethod
-    def concatenate_unique_ordered(*lists: List) -> List:
-        seen = set()
-        result = []
-        for item in chain(*lists):
-            if item not in seen:
-                seen.add(item)
-                result.append(item)
-        return result
-
-
-class WebContentChunker:
-
-    def __init__(self, client: storage.Client = None) -> None:
-        if not client:
-            credentials = service_account.Credentials.from_service_account_file(
-                os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
-            )
-            self.client = storage.Client(credentials=credentials)
-        else:
-            self.client = client
-
-        self.service_account = os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
-        self.bucket_name = "agent-neo-neo4j-cs-team-201901-docs"
-        self.bucket = self.client.get_bucket(self.bucket_name)
-        self._chunked_documents = []
+    def __init__(self, storage_client: storage.Client = None, secret_client: SecretManager = None) -> None:
+        super().__init__(storage_client, secret_client)
+        self._storage_client = storage_client or storage.Client()
+        self._secret_client = secret_client or SecretManager()
 
     @property
     def chunk_texts(self) -> List[str]:
@@ -174,7 +29,7 @@ class WebContentChunker:
         return list({chunk.metadata.get('source', '') for chunk in self._chunked_documents})
 
     @property
-    def chunks_as_dict(self) -> Dict[str, List[str]]:
+    def chunk_as_dict(self) -> Dict[str, List[str]]:
         self._assert_documents_chunked()
 
         result = {}
@@ -199,29 +54,34 @@ class WebContentChunker:
             return []
 
     @staticmethod
-    def _process_youtube_id(id) -> str:
-        """
-        This method strips the address and file suffix from a retrieved id in the 
-        transcript loading process.
-        """
+    def _process_youtube_id(id:str) -> str:
         result = id.replace("youtube/transcripts/", "")
         return result.replace(".txt", "")
 
-    def _get_transcript_text(self, id: str) -> str:
-        """
-        This method gets the transcript text from the GCP storage bucket address.
-        """
+    def _get_transcript_text(self, id: str,bucket_name:str  = None,blob_name: str = None) -> str:
+        if bucket_name is None:
+            bucket_name = self._secret_client.access_secret_version("bucket_name")
 
-        transcript = self.bucket.get_blob("youtube/transcripts/" + id + ".txt").download_as_text()
+        bucket = self._storage._storage_client.get_bucket(bucket_name)
 
-        return transcript
+        if blob_name is None:
+            blobs = list(bucket.list_blobs())
+            if not blobs:
+                raise Exception("No blobs found in the bucket.")
+            blob = blobs[0]
+        else:
+
+            blob = bucket.blob(blob_name)
+
+
+        data = blob.download_as_string()
+
+        return data
+
 
     def _scrape_youtube_transcripts_into_langchain_docs(self, id_list: List[str] = None) -> Tuple[
         List[Document], List[str]]:
-        """
-        This method retrieves all YouTube transcripts listed in the provided file list from GCP Storage.
-        It then formats them into LangChain Documents. 
-        """
+
 
         docs = []
         unsuccessful = []
@@ -332,7 +192,7 @@ class GCPStorageLoader:
 
     def _get_youtube_video_ids(self) -> List[str]:
         """
-        This method gets the YouTube video ids csv file from GCP Storage and 
+        This method gets the YouTube video ids csv file from GCP Storage and
         returns a list of the video urls it contains.
         """
         # bucket = self.client.get_bucket(self.bucket_name)
@@ -343,6 +203,7 @@ class GCPStorageLoader:
 
         return videos_list
 
+    #todo: temporarily breaking
     @staticmethod
     def _create_transcript(video_id: str) -> str:
         """
@@ -350,14 +211,14 @@ class GCPStorageLoader:
         Returns a string representation of the video transcript.
         """
 
-        raw_transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        #raw_transcript = YouTubeTranscriptApi.get_transcript(video_id)
         # instantiate the text formatter
         formatter = TextFormatter()
 
         # format the video into a string without timestamps, etc...
-        transcript_formatted = formatter.format_transcript(raw_transcript)
+        transcript_formatted = formatter.format_transcript('')
 
-        # replace newlines with a space 
+        # replace newlines with a space
 
         return transcript_formatted.replace("\n", " ")
 
@@ -399,9 +260,12 @@ class GCPStorageLoader:
     def update_unsuccessful_transcripts(self, unsuccessful_list: List[str]) -> None:
         """
         This method takes a list of unsuccessful YouTube ids and creates a new csv file
-        in GCP Storage for later retrieval. 
+        in GCP Storage for later retrieval.
         """
 
         file_loc = "youtube/"
         failed_df = pd.Series({"YouTube_Address": unsuccessful_list})
         self.bucket.blob(file_loc + "neo4j_failed_video_list.csv").upload_from_string(failed_df.to_csv(), 'text/csv')
+
+
+

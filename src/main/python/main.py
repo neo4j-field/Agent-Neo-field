@@ -2,7 +2,7 @@ import os
 import time  # Import the time module
 from google.cloud import storage
 from scrape import Fetcher, WebContentChunker
-from scrape import parse_sitemaps_tolist, extract_list_from_json, remove_newlines, remove_unwanted_phrase
+from scrape import remove_newlines, remove_unwanted_phrase
 from scrape import TextEmbeddingService
 
 if __name__ == '__main__':
@@ -21,11 +21,11 @@ if __name__ == '__main__':
     other_articles_json = fetch.get_other_articles()
     practitioners_guides_json = fetch.get_practitioner_guide_md()
 
-    other_articles_list = extract_list_from_json(other_articles_json)
-    practitioners_list = extract_list_from_json(practitioners_guides_json)
-    sitemaps_list = extract_list_from_json(sitemaps_json)
+    other_articles_list = fetch.extract_list_from_json(other_articles_json)
+    practitioners_list = fetch.extract_list_from_json(practitioners_guides_json)
+    sitemaps_list = fetch.extract_list_from_json(sitemaps_json)
 
-    parsed_sitemaps_list = parse_sitemaps_tolist(sitemaps_list)
+    parsed_sitemaps_list = fetch.parse_sitemaps_tolist(sitemaps_list)
 
     all_assets = Fetcher.concatenate_unique_ordered(parsed_sitemaps_list, practitioners_list, other_articles_list)
 
