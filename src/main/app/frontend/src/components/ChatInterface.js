@@ -33,6 +33,8 @@ function ChatInterface() {
     try {
       // Execute the API call with fetch
       console.log("address: ", process.env.REACT_APP_BACKEND_ADDRESS)
+      console.log("address: ", `${process.env.REACT_APP_BACKEND_ADDRESS}/llm`)
+      console.log("body: ", requestBody)
       const response = await fetch(`${process.env.REACT_APP_BACKEND_ADDRESS}/llm`, {
         method: 'POST',
         headers: {
