@@ -6,7 +6,11 @@ from routers import llm, rating
 app = FastAPI()
 
 origins = [
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://chatbot.agent-neo-chat.com:8080',
+    'https://chatbot.agent-neo-chat.com',
+    'https://agent-neo-react-fe-qaiojvs3da-uc.a.run.app:8080',
+    'https://agent-neo-react-fe-qaiojvs3da-uc.a.run.app'
 ]
 
 app.add_middleware(

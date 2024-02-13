@@ -19,7 +19,7 @@ from tools.secret_manager import SecretManager
 from objects.nodes import UserMessage, AssistantMessage
 
 
-PUBLIC = 'false'
+# PUBLIC = 'false'
 
 # AUTHENTICATE SERVICE ACCOUNT  
 # google_credentials = service_account.Credentials.from_service_account_info(
@@ -44,9 +44,9 @@ class Communicator:
 
     def __init__(self) -> None:
 
-        self.driver = drivers.init_driver(uri=self.sm.access_secret_version("neo4j_dev_uri"), 
+        self.driver = drivers.init_driver(uri=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"), 
                                           username=self.sm.access_secret_version("neo4j_username"), 
-                                          password=self.sm.access_secret_version("neo4j_dev_password"))
+                                          password=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_password"))
         self.database_name = self.sm.access_secret_version("neo4j_database")
         self.project = os.getenv('GCP_PROJECT_ID')
         self.region = self.sm.access_secret_version('gcp_region')
@@ -90,7 +90,7 @@ class GraphWriter(Communicator):
                             content=message.content, 
                             embedding=message.embedding,
                             role='user', 
-                            public=PUBLIC)
+                            public=message.public)
         try:
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(log)
@@ -122,7 +122,7 @@ class GraphWriter(Communicator):
                             content=message.content,
                             embedding=message.content, 
                             role='user',
-                            public=PUBLIC)
+                            public=message.public)
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -170,7 +170,7 @@ class GraphWriter(Communicator):
                             numDocs=message.number_of_documents, 
                             prompt=message.prompt,
                             resultingSummary=mem,
-                            public=PUBLIC)
+                            public=message.public)
 
         try:
             with self.driver.session(database=self.database_name) as session:
