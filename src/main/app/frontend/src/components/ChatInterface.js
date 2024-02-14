@@ -2,6 +2,7 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App'; // Import the context to use shared state
 import { v4 as uuidv4 } from 'uuid'; // Import uuid to generate unique ids
+import { Button } from '@neo4j-ndl/react';
 
 // Define the ChatInterface component
 function ChatInterface() {
@@ -104,19 +105,6 @@ function ChatInterface() {
     setIsSubmitting(false); // Ensure submit button is enabled
   };
 
-  // Inline styles for the submit button
-  const buttonStyles = {
-    enabled: {
-      backgroundColor: '#007bff', // Color for the enabled state
-      color: 'white',
-      cursor: 'pointer',
-    },
-    disabled: {
-      backgroundColor: '#cccccc', // Color for the disabled state
-      color: '#666666',
-      cursor: 'not-allowed',
-    }
-  };
 
   // Component JSX to render the chat interface
   return (
@@ -135,14 +123,23 @@ function ChatInterface() {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type your message here..."
         />
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          style={isSubmitting ? buttonStyles.disabled : buttonStyles.enabled}
-        >
-          Send
-        </button>
-        <button type="button" onClick={handleReset}>Reset Chat</button>
+      <Button
+        color="primary"
+        fill="filled"
+        size="medium"
+        disabled={isSubmitting}
+        loading={isSubmitting}
+        type="submit"
+        >Send
+      </Button>
+      <Button
+          onClick={handleReset}
+          type="button"
+          color="neutral"
+          fill="outlined"
+          size="medium" // Added for size consistency
+      >Reset Chat
+      </Button>
       </form>
     </div>
   );

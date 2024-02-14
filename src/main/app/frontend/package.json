@@ -10,7 +10,14 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "@neo4j-ndl/base": "^2.3.0",
+    "@neo4j-ndl/react": "^2.3.0"
+  },
+    "devDependencies": {
+    "tailwindcss": "^3.0.0",
+    "postcss": "^8.0.0",
+    "autoprefixer": "^10.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
