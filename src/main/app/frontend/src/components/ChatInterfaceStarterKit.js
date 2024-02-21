@@ -2,7 +2,9 @@
 import React, { useContext, useState } from 'react';
 import { AppContext } from '../App'; // Import the context to use shared state
 import { v4 as uuidv4 } from 'uuid'; // Import uuid to generate unique ids
-import { Button, TextInput, Typography } from '@neo4j-ndl/react';
+import { Button, TextInput, Typography, Widget, Avatar } from '@neo4j-ndl/react';
+import ChatBotUserAvatar from './assets/chatbot-user.png';
+import ChatBotAvatar from './assets/chatbot-ai.png';
 
 // Define the ChatInterface component
 function ChatInterface() {
@@ -16,6 +18,8 @@ function ChatInterface() {
   const [conversationId] = useState(() => `conv-${uuidv4()}`); // Generates a unique conversation id
   const [messageHistory, setMessageHistory] = useState([]); // Stores message history for API requests
   const [isSubmitting, setIsSubmitting] = useState(false); // Tracks if a submission is in progress
+
+  const [isResponseOk, setIsResponseOk] = useState(false); // Tracks if response from API is ok
 
   // Function to call the API asynchronously
   const fetchResponseFromAPI = async (inputText) => {
@@ -45,12 +49,15 @@ function ChatInterface() {
         body: JSON.stringify(requestBody),
       });
       if (!response.ok) {
+        setIsResponseOk(false);
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
       const data = await response.json(); // Parse the JSON response
       setMessageHistory(data.message_history); // Update the message history with the new history from response
+      setIsResponseOk(true);
       return data.content; // Return the response content to be displayed
     } catch (error) {
+      setIsResponseOk(false);
       console.error("API call failed:", error);
       return "Sorry, something went wrong."; // Handle errors gracefully
     } finally {
@@ -109,16 +116,67 @@ function ChatInterface() {
   return (
     <div className="flex flex-col grow pt-12 pb-10 pr-5 pl-2.5 w-9/12">
       <div className="flex flex-col overflow-y-auto p-2.5 mb-5 h-[calc(100dvh-220px)] border border-[#ccc]">
-        {messages.map((msg) => (
-          <div key={msg.id} 
-              className={`
-              mb-3 p-2 border rounded-lg max-w-lg 
-              ${msg.sender === 'user' ? 'n-bg-palette-primary-bg-weak self-end' : 'n-bg-palette-neutral-bg-weak self-start'}
-              `}>
-            <Typography variant='body-medium'>{msg.text}</Typography>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '3rem' }}>
+        <Widget className='n-bg-palette-neutral-bg-weak' header='' isElevated={false} style={{ height: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px' }}>
+            {messages.map((chat) => (
+              <div
+                key={chat.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: chat.sender === 'bot' ? 'row' : 'row-reverse',
+                  alignItems: 'flex-end',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ width: '30px', height: '30px' }}>
+                  {chat.sender === 'bot' ? (
+                    <Avatar
+                      className=''
+                      hasStatus
+                      name='KM'
+                      shape='square'
+                      size='x-large'
+                      source={ChatBotAvatar}
+                      status={isResponseOk? 'online' : 'offline'}
+                      type='image'
+                      style={{ marginLeft: '-15px' }}
+                    />
+                  ) : (
+                    <Avatar
+                      className=''
+                      hasStatus
+                      name='KM'
+                      shape='square'
+                      size='x-large'
+                      source={ChatBotUserAvatar}
+                      status='online'
+                      type='image'
+                    />
+                  )}
+                </div>
+                <Widget
+                  header=''
+                  isElevated={true}
+                  className={chat.sender === 'bot' ? 'n-bg-palette-neutral-bg-strong' : 'n-bg-palette-primary-bg-weak'}
+                  style={{
+                    padding: '4',
+                    alignSelf: 'flex-start',
+                    maxWidth: '55%',
+                  }}
+                >
+                  <div style={{ flexGrow: 1 }}>
+                  <Typography variant='body-medium'>{chat.text}</Typography>
+                  </div>
+                  <div style={{ textAlign: 'right', verticalAlign: 'bottom', paddingTop: '12px' }}>
+                    <Typography variant='body-small'>2024-01-01 09:00:00</Typography>
+                  </div>
+                </Widget>
+              </div>
+            ))}
           </div>
-          
-        ))}
+        </Widget>
+      </div>
       </div>
       <form onSubmit={handleSubmit} className="flex gap-2.5">
         <TextInput

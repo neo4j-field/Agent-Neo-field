@@ -4,6 +4,9 @@ notebooks/
 src/main/python/youtube_gcs_loader.ipynb
 private
 .DS_Store
+src/main/app/frontend/node_modules/
+src/main/app/frontend/package-lock.json
+src/main/app/frontend/.package-lock.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
