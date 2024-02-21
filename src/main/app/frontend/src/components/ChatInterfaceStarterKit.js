@@ -19,6 +19,8 @@ function ChatInterface() {
   const [messageHistory, setMessageHistory] = useState([]); // Stores message history for API requests
   const [isSubmitting, setIsSubmitting] = useState(false); // Tracks if a submission is in progress
 
+  const [isResponseOk, setIsResponseOk] = useState(false); // Tracks if response from API is ok
+
   // Function to call the API asynchronously
   const fetchResponseFromAPI = async (inputText) => {
     setIsSubmitting(true); // Indicate that an API call is in progress
@@ -47,12 +49,15 @@ function ChatInterface() {
         body: JSON.stringify(requestBody),
       });
       if (!response.ok) {
+        setIsResponseOk(false);
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
       const data = await response.json(); // Parse the JSON response
       setMessageHistory(data.message_history); // Update the message history with the new history from response
+      setIsResponseOk(true);
       return data.content; // Return the response content to be displayed
     } catch (error) {
+      setIsResponseOk(false);
       console.error("API call failed:", error);
       return "Sorry, something went wrong."; // Handle errors gracefully
     } finally {
@@ -133,7 +138,7 @@ function ChatInterface() {
                       shape='square'
                       size='x-large'
                       source={ChatBotAvatar}
-                      status='online'
+                      status={isResponseOk? 'online' : 'offline'}
                       type='image'
                       style={{ marginLeft: '-15px' }}
                     />
