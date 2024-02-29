@@ -16,7 +16,7 @@ function ChatInterface() {
   const [messages, setMessages] = useState([]); // Stores all chat messages
   const [sessionId] = useState(() => `s-${uuidv4()}`); // Generates a unique session id
   const [conversationId] = useState(() => `conv-${uuidv4()}`); // Generates a unique conversation id
-  const [messageHistory, setMessageHistory] = useState([]); // Stores message history for API requests
+  const [messageHistory, setMessageHistory] = useState(); // Stores message history for API requests
   const [isSubmitting, setIsSubmitting] = useState(false); // Tracks if a submission is in progress
 
   const [isResponseOk, setIsResponseOk] = useState(false); // Tracks if response from API is ok
@@ -66,29 +66,26 @@ function ChatInterface() {
   };
 
   // Function to simulate typing effect for bot responses
-  const simulateTypingEffect = (responseText) => {
-    let typedText = '';
-    for (let i = 0; i < responseText.length; i++) {
-      setTimeout(() => {
-        typedText += responseText.charAt(i); // Append characters one by one
-        // Update the messages state with the new partial message
-        if (i === 0) {
-          setMessages(msgs => [...msgs, { id: Date.now(), text: typedText, sender: 'bot', isTyping: true }]);
-        } else {
-          // Update the last message with the new text
-          setMessages(msgs => msgs.map(msg => 
-            msg.isTyping ? { ...msg, text: typedText } : msg
-          ));
-        }
-        // Remove the typing indicator once the full message is displayed
-        if (i === responseText.length - 1) {
-          setMessages(msgs => msgs.map(msg => 
-            msg.isTyping ? { ...msg, isTyping: false } : msg
-          ));
-        }
-      }, i * 20); // Delay between each character to simulate typing
-    }
-  };
+const simulateTypingEffect = async (responseText) => {
+  let typedText = '';
+  // Add initial message indicating typing is in progress
+  const typingMessageId = Date.now();
+  setMessages(msgs => [...msgs, { id: typingMessageId, text: '', sender: 'bot', isTyping: true }]);
+
+  for (let i = 0; i < responseText.length; i++) {
+    await delay(20); // Delay to simulate typing
+    typedText += responseText.charAt(i);
+    // Update the message to show the new character
+    setMessages(msgs => msgs.map(msg =>
+      msg.id === typingMessageId ? { ...msg, text: typedText } : msg
+    ));
+  }
+
+  // Once the message is fully "typed out", remove the typing indicator
+  setMessages(msgs => msgs.map(msg =>
+    msg.id === typingMessageId ? { ...msg, isTyping: false } : msg
+  ));
+};
 
   // Function to handle form submission
   const handleSubmit = async (e) => {
