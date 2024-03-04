@@ -92,4 +92,5 @@ class LLM(BaseModel):
         llm_input = self._format_llm_input(question=question, context=context)
 
         print("llm input: ", llm_input)
-        return self.llm_instance.predict(llm_input)
+        # return self.llm_instance.predict(llm_input)
+        return self.llm_instance.invoke(llm_input)

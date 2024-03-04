@@ -17,6 +17,7 @@ import pandas as pd
 from database import drivers
 from tools.secret_manager import SecretManager
 from objects.nodes import UserMessage, AssistantMessage
+from objects.rating import Rating
 
 
 # PUBLIC = 'false'
@@ -179,39 +180,29 @@ class GraphWriter(Communicator):
         except ConstraintError as err:
             print(err) 
 
-#     def rate_message(self, rating_dict):
-#         """
-#             This message rates an LLM message given a rating and uploads
-#             the rating to the database.
-#         """
+    def rate_message(self, rating: Rating):
+        """
+            Rate an LLM message given a rating and uploads
+            the rating to the database.
+        """
 
-#         print('rating llm message...')
-#         if 'latest_llm_message_id' in st.session_state:
-#             rate_timer_start = time.perf_counter()
+        print('rating llm message...')
 
-  
-#             print('updating id: ', st.session_state['latest_llm_message_id'])
-            
-#             # parse rating info
-#             message = rating_dict['text']
-#             rating = 'Good' if rating_dict['score'] == '👍' else 'Bad'
+        def rate(tx):
+            tx.run("""
+            match (m:Message {id: $messId})
 
-#             def rate(tx):
-#                 tx.run("""
-#                 match (m:Message {id: $messId})
-    
-#                 set m.rating = $rating,
-#                     m.ratingMessage = $message
-#                         """, rating=rating, message=message, messId=st.session_state['latest_llm_message_id'])
-                    
-#             try:
-#                 with self.driver.session(database=self.database_name) as session:
-#                     session.execute_write(rate)
+            set m.rating = $rating,
+                m.ratingMessage = $message
+                    """, rating=rating.value, message=rating.message, messId=rating.message_id)
                 
-#             except ConstraintError as err:
-#                 print(err) 
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                session.execute_write(rate)
+            
+        except ConstraintError as err:
+            print(err) 
 
-#             print('assistant rate time: '+str(round(time.perf_counter()-rate_timer_start, 4))+" seconds.")
 
 class GraphReader(Communicator):
 
