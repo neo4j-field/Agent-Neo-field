@@ -246,4 +246,43 @@ class GraphReader(Communicator):
 
 
         return pd.DataFrame(docs, columns=["url", "text", "index"])
+
+    def retrieve_context_documents_by_topic(self, question_embedding: List[float],
+                                   number_of_topics: int = 3,
+                                   documents_per_topic: int = 4) -> pd.DataFrame:
+        '''
+        This function takes the user question and creates an embedding of it
+        using a vertexai model.
+        Cosine similarity is run on the embedding against the embeddings in the
+        Neo4j database to topic summaries most similar to the question.
+        The most relevant documents for each topic are retrieved.
+        The top n documents with their URLs are returned as context.
+        '''
+
+        def topical_neo4j_vector_index_search(tx):
+            """
+            This method runs vector similarity search on the document embeddings against the question embedding.
+            """
+
+            return tx.run("""
+                            CALL db.index.vector.queryNodes('topic_group_summary_embeddings', toInteger($k), questionEmbedding)
+                            YIELD node AS g, score
+                            MATCH (g)<-[:IN_GROUP]-()<-[h:HAS_TOPIC]-(vDocs)
+                            WHERE h.rankAlpha50 <= toInteger($documents_per_topic)
+                            return vDocs.url as url, vDocs.text as text, vDocs.index as index
+                            """, questionEmbedding=question_embedding, k=number_of_topics, docs_per_topic = documents_per_topic
+                          ).values()
+
+        # get documents from Neo4j database
+        neo4j_timer_start = time.perf_counter()
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                docs = session.execute_read(topical_neo4j_vector_index_search)
+
+        except Exception as err:
+            print(err)
+
+        print("Neo4j retrieval time: " + str(round(time.perf_counter() - neo4j_timer_start, 4)) + " seconds.")
+
+        return pd.DataFrame(docs, columns=["url", "text", "index"])
     
