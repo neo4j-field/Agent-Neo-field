@@ -60,13 +60,14 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     print("real call")
     question_embedding = TextEmbeddingService().get_embedding(text=question.question)
     print("got embedding...")
-    context = reader.retrieve_context_documents(question_embedding=question_embedding)
+    context = reader.retrieve_context_documents(question_embedding=question_embedding, number_of_context_documents=question.number_of_documents)
     # print(context)
     print("context retrieved...")
     llm = LLM(llm_type="GPT-4 8k", temperature=question.temperature)
     print("llm initialized...")
     llm_response = llm.get_response(question=question.question, context=context)
     print("response retrieved...")
+    print(llm_response)
     user_message = UserMessage(session_id=question.session_id,
                                conversation_id=question.conversation_id,
                                content=question.question,
@@ -76,7 +77,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     assistant_message = AssistantMessage(session_id=question.session_id,
                                          conversation_id=question.conversation_id,
                                          prompt=get_prompt(context=context),
-                                         content=llm_response,
+                                         content=llm_response.content,
                                          public=PUBLIC,
                                          vectorIndexSearch=True,
                                          number_of_documents=question.number_of_documents,
@@ -87,7 +88,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     print("returning...")
     return  Response(   session_id=question.session_id, 
                         conversation_id=question.conversation_id, 
-                        content=llm_response,
+                        content=llm_response.content,
                         message_history=question.message_history+[user_message.message_id, assistant_message.message_id])
 
 def log_user_message(message: UserMessage, message_history: List[str], llm_type: str, temperature: float) -> None:
@@ -113,7 +114,7 @@ def get_prompt(context: List[str]) -> str:
      Determine the prompt used for LLM query.
      """
 
-     return prompt_template if len(context) < 1 else prompt_no_context_template
+     return prompt_no_context_template if len(context) < 1 else prompt_template
 
 
 def write_notification(email: str, message=""):
