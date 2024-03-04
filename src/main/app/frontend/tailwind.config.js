@@ -1,5 +1,20 @@
+import { tailwindConfig } from '@neo4j-ndl/base';
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    './public/index.html',
+    './src/**/*.{html,tsx}',
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+
 module.exports = {
-  presets: [require("@neo4j-ndl/base").tailwindConfig],
-  prefix: "",
-  content: ["./src/**/*.{js,jsx,ts,tsx,css}", "./public/**/*.html"],
+  presets: [tailwindConfig],
+  prefix: '',
+  corePlugins: {
+    preflight: false,
+  },
 };
