@@ -32,4 +32,6 @@
 - Dan Bukowski
 - Alexander Gilmore
 - Alex Fournier
+- Roni Das
+- Nathan Smith
 
