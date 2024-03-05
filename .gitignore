@@ -4,6 +4,16 @@ notebooks/
 src/main/python/youtube_gcs_loader.ipynb
 private
 .DS_Store
+src/main/app/frontend/node_modules/
+src/main/app/frontend/package-lock.json
+src/main/app/frontend/.package-lock.json
+src/main/python/airflow/tasks/gcpfetch/env.json
+.idea/
+
+# Ignore specific directories in your project
+src/main/app/typescript-frontend/public/
+
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
