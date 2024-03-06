@@ -1,9 +1,16 @@
-# AgentNeo: The Ultimate Neo4j Assistant
+# Agent Neo: A Neo4j Powered Chatbot
 
-This project uses Neo4j Knowledge Graphs and Graph Data Science to analyze, understand, and improve the performance of grounded LLM applications. 
-With a focus on Neo4j Documentation. 
+ 
+
+
 
 ![Agent Neo](resources/agentneo.png)
+
+
+
+
+
+
 ## Table of Contents
 
 - [About AgentNeo](#about-agentneo)
@@ -17,6 +24,8 @@ With a focus on Neo4j Documentation.
 
 ## About AgentNeo
 
+* This project uses Neo4j Knowledge Graphs and Graph Data Science to analyze, understand, and improve the performance of grounded LLM applications - with a focus on Neo4j documentation
+
 ## Key Features
 
 - **Graph Grounding**: Utilizes the prowess of Neo4j to provide context-rich information.
@@ -25,8 +34,7 @@ With a focus on Neo4j Documentation.
 
 ## Getting Started
 
-
-## Usage
+You can find Agent Neo hosted here: https://chatbot.agent-neo-chat.com/
 
 
 ## Contributors
