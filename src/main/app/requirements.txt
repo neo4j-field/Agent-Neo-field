@@ -8,6 +8,7 @@ google-cloud-storage==2.10.0
 gcloud==0.18.3
 graphdatascience==1.7
 langchain==0.0.311
+langchain-openai-0.0.8
 langcodes==3.3.0
 langsmith==0.0.43
 neo4j==5.8.0

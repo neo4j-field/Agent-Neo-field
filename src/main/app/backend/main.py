@@ -22,4 +22,4 @@ app.add_middleware(
                    )
 
 app.include_router(llm.router)
-# app.include_router(rating.router)
+app.include_router(rating.router)

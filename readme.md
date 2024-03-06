@@ -34,4 +34,6 @@ With a focus on Neo4j Documentation.
 - Dan Bukowski
 - Alexander Gilmore
 - Alex Fournier
+- Roni Das
+- Nathan Smith
 

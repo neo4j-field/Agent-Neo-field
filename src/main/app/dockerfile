@@ -15,6 +15,9 @@ RUN pip install -U pip
 RUN pip3 install -r requirements.txt
 
 ENV PORT=8080
+ENV LANGCHAIN_TRACING_V2="true"
+ENV LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+ENV LANGCHAIN_PROJECT="agent-neo"
 
 # HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health
 RUN find /usr/local/lib/python3.11/site-packages/streamlit -type f \( -iname \*.py -o -iname \*.js \) -print0 | xargs -0 sed -i 's/healthz/health-check/g'

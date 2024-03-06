@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple
 
 import openai
 from langchain_community.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain_openai import OpenAI
 # from langchain.chains import ConversationChain
 import pandas as pd
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from resources.prompts.prompts import prompt_no_context_template, prompt_templat
 from tools.secret_manager import SecretManager
 
 sm = SecretManager()
+os.environ["LANGCHAIN_API_KEY"] = sm.access_secret_version("langsmith_api_key") 
 
 class LLM(BaseModel):
     """
@@ -59,6 +61,9 @@ class LLM(BaseModel):
                        deployment_name = sm.access_secret_version('gpt4_8k_name'),
                        model_name = 'gpt-4',
                        temperature=temperature) # default is 0.7
+                # self.llm_instance = OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
+                #                            model="gpt-4",
+                #                            temperature=temperature)
             case "GPT-4 32k":
                 # Tokens per Minute Rate Limit (thousands): 30
                 # Rate limit (Tokens per minute): 30000
@@ -69,6 +74,9 @@ class LLM(BaseModel):
                        deployment_name = sm.access_secret_version('gpt4_32k_name'),
                        model_name = 'gpt-4-32k',
                        temperature=temperature) # default is 0.7
+                # self.llm_instance = OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
+                #                            model="gpt-4-32k",
+                #                            temperature=temperature)
             case _:
                 raise ValueError("Please provide a valid LLM type.")
     
@@ -92,4 +100,5 @@ class LLM(BaseModel):
         llm_input = self._format_llm_input(question=question, context=context)
 
         print("llm input: ", llm_input)
-        return self.llm_instance.predict(llm_input)
+        # return self.llm_instance.predict(llm_input)
+        return self.llm_instance.invoke(llm_input)

@@ -10,7 +10,7 @@ class UserMessage(BaseModel):
 
     session_id: str
     conversation_id: str
-    message_id: str | None = None
+    message_id: str = "user-"+str(uuid4())
     content: str
     embedding: List[float] | None = None
     role: str = "user"
@@ -19,7 +19,7 @@ class UserMessage(BaseModel):
     def __init__(self, *a, **kw) -> None:
         super().__init__(*a, **kw)
 
-        self.message_id = "user-"+str(uuid4())
+        # self.message_id = "user-"+str(uuid4())
 
 class AssistantMessage(BaseModel):
     """
@@ -28,7 +28,7 @@ class AssistantMessage(BaseModel):
 
     session_id: str
     conversation_id: str
-    message_id: str | None = None
+    message_id: str = "llm-"+str(uuid4())
     prompt: str | None = None
     content: str
     role: str = "assistant"
@@ -40,7 +40,7 @@ class AssistantMessage(BaseModel):
     def __init__(self, *a, **kw) -> None:
         super().__init__(*a, **kw)
 
-        self.message_id = "llm-"+str(uuid4())
+        # self.message_id = "llm-"+str(uuid4())
 
 class Conversation(BaseModel):
     """
