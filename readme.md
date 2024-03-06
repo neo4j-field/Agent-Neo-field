@@ -3,7 +3,7 @@
 This project uses Neo4j Knowledge Graphs and Graph Data Science to analyze, understand, and improve the performance of grounded LLM applications. 
 With a focus on Neo4j Documentation. 
 
-
+![Agent Neo](resources/agentneo.png)
 ## Table of Contents
 
 - [About AgentNeo](#about-agentneo)
@@ -31,9 +31,12 @@ With a focus on Neo4j Documentation.
 
 ## Contributors
 
-- Dan Bukowski
+- Dan Bukowski 
 - Alexander Gilmore
-- Alex Fournier
+- Alexander Fournier
 - Roni Das
 - Nathan Smith
+- Morgan Senechal
+- Kumar Subbiah Shunmugathai
+
 
