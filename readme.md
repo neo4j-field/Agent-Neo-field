@@ -1,6 +1,8 @@
 # AgentNeo: The Ultimate Neo4j Assistant
 
-:add description
+This project uses Neo4j Knowledge Graphs and Graph Data Science to analyze, understand, and improve the performance of grounded LLM applications. 
+With a focus on Neo4j Documentation. 
+
 
 ## Table of Contents
 
