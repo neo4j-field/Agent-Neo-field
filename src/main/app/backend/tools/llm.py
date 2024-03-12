@@ -2,7 +2,9 @@ import os
 from typing import List, Dict, Tuple
 
 import openai
-from langchain_community.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain_community.chat_models import AzureChatOpenAI
+# from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_openai import OpenAI
 # from langchain.chains import ConversationChain
 import pandas as pd
@@ -51,6 +53,8 @@ class LLM(BaseModel):
                         top_p=0.95, # default is 0.95
                         top_k = 40 # default is 40
                        )
+            case "Gemini":
+                self.llm_instance = ChatVertexAI(model_name="gemini-pro")
             case "GPT-4 8k":
                 # Tokens per Minute Rate Limit (thousands): 10
                 # Rate limit (Tokens per minute): 10000

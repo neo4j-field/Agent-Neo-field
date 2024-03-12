@@ -63,7 +63,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     context = reader.retrieve_context_documents(question_embedding=question_embedding, number_of_context_documents=question.number_of_documents)
     # print(context)
     print("context retrieved...")
-    llm = LLM(llm_type="GPT-4 8k", temperature=question.temperature)
+    llm = LLM(llm_type=question.llm_type, temperature=question.temperature)
     print("llm initialized...")
     llm_response = llm.get_response(question=question.question, context=context)
     print("response retrieved...")
