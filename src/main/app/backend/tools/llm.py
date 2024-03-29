@@ -10,6 +10,7 @@ from langchain_openai import OpenAI
 import pandas as pd
 from pydantic import BaseModel
 
+from objects.question import Question
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
 
 from tools.secret_manager import SecretManager
@@ -96,13 +97,19 @@ class LLM(BaseModel):
             print("creating non-context prompt...")
             return prompt_no_context_template.format(question=question)
                     
-    def get_response(self, question: str, context: pd.DataFrame | None = None) -> str:
+    def get_response(self, question: Question, user_id: str, assistant_id: str, context: pd.DataFrame | None = None) -> str:
         """
         Get a response from the LLM.
         """
 
-        llm_input = self._format_llm_input(question=question, context=context)
+        llm_input = self._format_llm_input(question=question.question, context=context)
 
         print("llm input: ", llm_input)
         # return self.llm_instance.predict(llm_input)
-        return self.llm_instance.invoke(llm_input)
+        return self.llm_instance.invoke(llm_input, {"metadata": {"conversation_id": question.conversation_id, 
+                                                                 "session_id": question.session_id,
+                                                                 "user_id": user_id,
+                                                                 "assistant_id": assistant_id
+                                                                 }
+                                                    }
+                                        )
