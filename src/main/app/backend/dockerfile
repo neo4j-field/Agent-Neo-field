@@ -10,6 +10,9 @@ RUN pip install -U pip
 RUN pip3 install -r requirements.txt
 
 ENV DATABASE_TYPE="prod"
+ENV LANGCHAIN_TRACING_V2="true"
+ENV LANGCHAIN_ENDPOINT="https://api.smith.langchain.com"
+ENV LANGCHAIN_PROJECT="agent-neo"
 
 EXPOSE 8080
 
