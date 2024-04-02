@@ -48,9 +48,9 @@ function Sidebar() {
         expanded={isDrawerExpanded}
         onExpandedChange={handleDrawerChange}
         closeable
-        className="flex flex-col gap-y-12 flex-shrink-0 p-5 border-r bg-white h-full"
+        className="flex flex-col gap-y-12 flex-shrink-0 p-5 border-r bg-white h-screen"
       >
-        <div className="flex flex-col gap-y-12 flex-shrink-0 p-5 border-r overflow-y-auto">
+        <div className="flex flex-col gap-y-12 flex-shrink-0 p-5 overflow-y-auto">
             <section className="flex flex-col gap-y-4">
                 <Typography variant="h3">LLM</Typography>
                 <SegmentedControl
@@ -75,7 +75,7 @@ function Sidebar() {
             <section className="flex flex-col gap-y-4">
                 <Typography variant="h3">Temperature</Typography>
                 <input
-                    className="w-full h-2 rounded-lg appearance-none cursor-pointer range-lg"
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer range-lg n-bg-palette-primary-bg-weak"
                     type="range"
                     name="temperature"
                     min="0"
