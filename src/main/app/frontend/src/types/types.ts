@@ -42,3 +42,4 @@ export interface ApiResponse {
   content: string; // Ensure this property is included
   message_history?: string[]; // This is correctly optional
 }
+
