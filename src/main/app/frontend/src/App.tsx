@@ -1,7 +1,7 @@
 import React, { createContext, useState } from 'react';
 import Sidebar from './components/SideBar';
 import ChatInterfaceStarterKit from './components/ChatInterfaceStartKit';
-import { NeedleThemeProvider, Logo, Typography } from '@neo4j-ndl/react';
+import { NeedleThemeProvider, Logo, Typography, useMediaQuery } from '@neo4j-ndl/react';
 import './tailwind.css';
 import '@neo4j-ndl/base/lib/neo4j-ds-styles.css';
 import { Settings, AppContextType } from './types/types';
@@ -18,8 +18,8 @@ function App() {
         useGrounding: true,
         contextDocuments: 10,
     });
-
-    const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+    const [theme, setTheme] = useState<'light' | 'dark'>(prefersDarkMode ? 'dark' : 'light');
     const toggleTheme = () => setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
 
 
