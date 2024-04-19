@@ -24,7 +24,7 @@ class TestQuestion(unittest.TestCase):
                  number_of_documents=5, 
                  temperature=0.7)
 
-    def test_bad_init(self) -> None:
+    def test_bad_session_id(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="conv-123", 
                     conversation_id="conv-123", 
@@ -34,6 +34,7 @@ class TestQuestion(unittest.TestCase):
                     llm_type="gpt-4 8k",
                     number_of_documents=5, 
                     temperature=0.7)
+    def test_bad_conversation_id(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="s-123", 
                     conversation_id="s-123", 
@@ -43,6 +44,7 @@ class TestQuestion(unittest.TestCase):
                     llm_type="gpt-4 8k",
                     number_of_documents=5, 
                     temperature=0.7)
+    def test_bad_conversation_history(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="s-123", 
                     conversation_id="conv-123", 
@@ -52,6 +54,7 @@ class TestQuestion(unittest.TestCase):
                     llm_type="gpt-4 8k",
                     number_of_documents=5, 
                     temperature=0.7)
+    def test_bad_message_history(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="s-123", 
                     conversation_id="conv-123", 
@@ -61,6 +64,7 @@ class TestQuestion(unittest.TestCase):
                     llm_type="gpt-4 8k",
                     number_of_documents=5, 
                     temperature=0.7)
+    def test_bad_llm_type(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="s-123", 
                     conversation_id="conv-123", 
@@ -70,6 +74,7 @@ class TestQuestion(unittest.TestCase):
                     llm_type="gpt-5",
                     number_of_documents=5, 
                     temperature=0.7)
+    def test_bad_document_number(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="s-123", 
                     conversation_id="conv-123", 
@@ -79,6 +84,7 @@ class TestQuestion(unittest.TestCase):
                     llm_type="gpt-4 8k",
                     number_of_documents=11, 
                     temperature=0.7)
+    def test_bad_temperature(self) -> None:
         with self.assertRaises(ValueError):
                 Question(session_id="s-123", 
                     conversation_id="conv-123", 

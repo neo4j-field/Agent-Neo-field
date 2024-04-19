@@ -11,7 +11,7 @@ class TestAssistantMessage(unittest.TestCase):
 
     def test_init(self) -> None:
         AssistantMessage(session_id="s-123", conversation_id="conv-123", prompt=prompt_template, content="this is content.", number_of_documents=10, temperature=0.55, public=True)
-        AssistantMessage(session_id="s-123", conversation_id="conv-123", prompt=prompt_template, content="this is content.", number_of_documents=10, temperature=0.0, public=True, vector_index_search=False)
+        AssistantMessage(session_id="s-123", conversation_id="conv-123", prompt=prompt_no_context_template, content="this is content.", number_of_documents=10, temperature=0.0, public=True, vector_index_search=False)
 
     def test_bad_session_id(self) -> None:
         with self.assertRaises(ValueError):

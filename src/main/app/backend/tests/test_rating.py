@@ -12,9 +12,18 @@ class TestRating(unittest.TestCase):
         r = Rating(session_id="s-123", conversation_id="conv-123", message_id="llm-123", value="Good", message="good job.")
         r2 = Rating(session_id="s-123", conversation_id="conv-123", message_id="llm-123", value="Bad")
 
-    def test_bad_init(self) -> None:
+    def test_bad_session_id(self) -> None:
         with self.assertRaises(ValueError):
             Rating(session_id="conv-123", conversation_id="conv-123", message_id="llm-123", value="Bad")
+
+    def test_bad_conversation_id(self) -> None:
+        with self.assertRaises(ValueError):
             Rating(session_id="s-123", conversation_id="s-123", message_id="llm-123", value="Bad")
+
+    def test_bad_message_id(self) -> None:
+        with self.assertRaises(ValueError):
             Rating(session_id="s-123", conversation_id="conv-123", message_id="user-123", value="Bad")
 
+    def test_bad_value(self) -> None:
+        with self.assertRaises(ValueError):
+            Rating(session_id="s-123", conversation_id="conv-123", message_id="llm-123", value="Meh")
