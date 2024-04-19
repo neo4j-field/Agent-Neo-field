@@ -84,7 +84,7 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
                                          prompt=get_prompt(context=context),
                                          content=llm_response.content,
                                          public=PUBLIC,
-                                         vectorIndexSearch=True,
+                                         vector_index_search=True,
                                          number_of_documents=question.number_of_documents,
                                          temperature=question.temperature)
 
