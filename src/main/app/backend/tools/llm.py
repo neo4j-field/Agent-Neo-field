@@ -54,9 +54,9 @@ class LLM(BaseModel):
                         top_p=0.95, # default is 0.95
                         top_k = 40 # default is 40
                        )
-            case "Gemini":
+            case "gemini":
                 self.llm_instance = ChatVertexAI(model_name="gemini-pro")
-            case "GPT-4 8k":
+            case "gpt-4 8k":
                 # Tokens per Minute Rate Limit (thousands): 10
                 # Rate limit (Tokens per minute): 10000
                 # Rate limit (Requests per minute): 60
@@ -69,7 +69,7 @@ class LLM(BaseModel):
                 # self.llm_instance = OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
                 #                            model="gpt-4",
                 #                            temperature=temperature)
-            case "GPT-4 32k":
+            case "gpt-4 32k":
                 # Tokens per Minute Rate Limit (thousands): 30
                 # Rate limit (Tokens per minute): 30000
                 # Rate limit (Requests per minute): 180
