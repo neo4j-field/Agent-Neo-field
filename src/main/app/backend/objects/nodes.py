@@ -4,6 +4,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
+from resources.valid_models import VALID_MODELS
 
 class UserMessage(BaseModel):
     """
@@ -69,8 +70,14 @@ class Conversation(BaseModel):
 
     session_id: str = Field(pattern=r'^s-.*', description="The session ID.")
     conversation_id: str = Field(pattern=r'^conv-.*', description="The conversation ID.")
-    llm_type: str
+    llm_type: str = Field(description="The LLM to use for response generation.")
 
+    @field_validator("llm_type")
+    def validate_llm_type(cls, v: str) -> str:
+        if v.lower() not in VALID_MODELS:
+            raise ValueError(f"llm_type must be one of the following: {str(VALID_MODELS)}.")
+        return v.lower()
+    
 class Session(BaseModel):
     """
     Contains session information.

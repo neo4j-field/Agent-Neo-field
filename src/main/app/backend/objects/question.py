@@ -1,8 +1,7 @@
 from typing import List, Dict, Union
 
 from pydantic import BaseModel, Field, field_validator
-
-VALID_MODELS: List[str] = ["chat-bison 2k", "chat-bison 32k", "gemini", "gpt-4 8k", "gpt-4 32k"]
+from resources.valid_models import VALID_MODELS
 
 class Question(BaseModel):
     """
