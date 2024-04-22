@@ -2,6 +2,7 @@ import unittest
 
 from objects.nodes import Session
 
+
 class TestSession(unittest.TestCase):
 
     @classmethod
@@ -14,4 +15,3 @@ class TestSession(unittest.TestCase):
     def test_bad_session_id(self) -> None:
         with self.assertRaises(ValueError):
             Session(session_id="conv-123")
-
