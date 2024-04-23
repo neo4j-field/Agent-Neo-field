@@ -1,11 +1,11 @@
 from neo4j import GraphDatabase
 
 
-def init_driver(uri, username, password):
+def init_driver(uri, username, password) -> GraphDatabase.driver:
     """
-    Initiate the Neo4j Driver
+    Initiate the Neo4j Driver.
     """
     d = GraphDatabase.driver(uri, auth=(username, password))
-    d.verify_connectivity()
+    # d.verify_connectivity()
     print("driver created")
     return d

@@ -6,7 +6,8 @@ import uuid
 
 # from graphdatascience import GraphDataScience
 
-from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain_google_vertexai import ChatVertexAI
+from langchain_openai import AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts.prompt import PromptTemplate
@@ -57,6 +58,13 @@ class Communicator:
         self.project = os.getenv("GCP_PROJECT_ID")
         self.region = self.sm.access_secret_version("gcp_region")
 
+    def close_driver(self) -> None:
+        """
+        Close the driver.
+        """
+
+        self.driver.close()
+
 
 class GraphWriter(Communicator):
 
@@ -80,11 +88,14 @@ class GraphWriter(Communicator):
             tx.run(
                 """
             create (c:Conversation)-[:FIRST]->(m:Message)
-            set c.id = $convId, c.llm = $llm,
+            set c.id = $convId, 
+                c.llm = $llm,
                 c.temperature = $temperature,
                 c.public = toBoolean($public),
-                m.id = $messId, m.content = $content,
-                m.role = $role, m.postTime = datetime(),
+                m.id = $messId, 
+                m.content = $content,
+                m.role = $role, 
+                m.postTime = datetime(),
                 m.embedding = $embedding,
                 m.public = toBoolean($public)
             
@@ -110,7 +121,6 @@ class GraphWriter(Communicator):
 
         except ConstraintError as err:
             print(err)
-
             session.close()
 
     def log_user(self, message: UserMessage, previous_message_id: str) -> None:
@@ -127,8 +137,10 @@ class GraphWriter(Communicator):
             match (pm:Message {id: $prevMessId})
             merge (m:Message {id: $messId})
             set m.content = $content,
-                m.role = $role, m.postTime = datetime(),
-                m.embedding = $embedding, m.public = toBoolean($public)
+                m.role = $role, 
+                m.postTime = datetime(),
+                m.embedding = $embedding, 
+                m.public = toBoolean($public)
                    
             merge (pm)-[:NEXT]->(m)
                       """,
@@ -146,6 +158,7 @@ class GraphWriter(Communicator):
 
         except ConstraintError as err:
             print(err)
+            session.close()
 
     def log_assistant(
         self,
@@ -168,7 +181,8 @@ class GraphWriter(Communicator):
             match (pm:Message {id: $prevMessId})
             merge (m:Message {id: $messId})
             set m.content = $content,
-                m.role = $role, m.postTime = datetime(),
+                m.role = $role, 
+                m.postTime = datetime(),
                 m.numDocs = $numDocs,
                 m.vectorIndexSearch = true,
                 m.prompt = $prompt,
@@ -202,6 +216,7 @@ class GraphWriter(Communicator):
 
         except ConstraintError as err:
             print(err)
+            session.close()
 
     def rate_message(self, rating: Rating):
         """
@@ -230,6 +245,74 @@ class GraphWriter(Communicator):
 
         except ConstraintError as err:
             print(err)
+            session.close()
+
+    def delete_by_id(self, ids: List[str]) -> None:
+        """
+        Delete nodes and relationships based on provided ids.
+        """
+
+        def delete_nodes_and_rels(tx):
+            tx.run(
+                """
+                unwind $ids as id
+                match (n {id: id})-[r]-()
+                detach delete n, r
+                """,
+                ids=ids,
+            )
+
+        def delete_nodes(tx):
+            tx.run(
+                """
+                unwind $ids as id
+                match (n {id: id})
+                delete n
+                """,
+                ids=ids,
+            )
+
+        def delete_document_nodes(tx):
+            tx.run(
+                """
+                unwind $ids as id
+                match (n {index: id})
+                delete n
+                """,
+                ids=ids,
+            )
+
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                session.execute_write(delete_nodes_and_rels)
+                session.execute_write(delete_nodes)
+                session.execute_write(delete_document_nodes)
+
+        except ConstraintError as err:
+            print(err)
+            session.close()
+
+    def write_dummy_node(self, id: str, label: str) -> None:
+        """
+        Create a dummy node for testing.
+        """
+
+        def write_node(tx):
+            prompt = (
+                "merge (n:" + label + "{id: $id})"
+                if not label == "Document"
+                else "merge (n:" + label + "{index: $id})"
+            )
+            tx.run(prompt, id=id)
+            print(prompt)
+
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                session.execute_write(write_node)
+
+        except ConstraintError as err:
+            print(err)
+            session.close()
 
 
 class GraphReader(Communicator):
@@ -272,6 +355,7 @@ class GraphReader(Communicator):
 
         except Exception as err:
             print(err)
+            session.close()
 
         print(
             "Neo4j retrieval time: "
@@ -303,7 +387,7 @@ class GraphReader(Communicator):
 
             return tx.run(
                 """
-                            CALL db.index.vector.queryNodes('topic_group_summary_embeddings', toInteger($k), questionEmbedding)
+                            CALL db.index.vector.queryNodes('topic_group_summary_embeddings', toInteger($k), $questionEmbedding)
                             YIELD node AS g, score
                             MATCH (g)<-[:IN_GROUP]-()<-[h:HAS_TOPIC]-(vDocs)
                             WHERE h.rankAlpha50 <= toInteger($documents_per_topic)
@@ -311,7 +395,7 @@ class GraphReader(Communicator):
                             """,
                 questionEmbedding=question_embedding,
                 k=number_of_topics,
-                docs_per_topic=documents_per_topic,
+                documents_per_topic=documents_per_topic,
             ).values()
 
         # get documents from Neo4j database
@@ -322,6 +406,7 @@ class GraphReader(Communicator):
 
         except Exception as err:
             print(err)
+            session.close()
 
         print(
             "Neo4j retrieval time: "
@@ -330,3 +415,73 @@ class GraphReader(Communicator):
         )
 
         return pd.DataFrame(docs, columns=["url", "text", "index"])
+
+    def match_by_id(self, ids: List[str]) -> int:
+        """
+        Match nodes based on provided ids and return count.
+        """
+
+        def match_nodes(tx):
+            return (
+                tx.run(
+                    """
+                unwind $ids as id
+                match (n {id: id})
+                return count(distinct n)
+                """,
+                    ids=ids,
+                )
+                .single()
+                .value()
+            )
+
+        def match_document_nodes(tx):
+            return (
+                tx.run(
+                    """
+                unwind $ids as id
+                match (n {index: id})
+                return count(distinct n)
+                """,
+                    ids=ids,
+                )
+                .single()
+                .value()
+            )
+
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                num_messages = session.execute_read(match_nodes)
+                print(f"messages {num_messages}")
+                num_documents = session.execute_read(match_document_nodes)
+                print(f"docs {num_documents}")
+
+        except ConstraintError as err:
+            print(err)
+            session.close()
+
+        return num_documents + num_messages
+
+    def get_message_rating(self, assistant_message_id: str) -> str:
+        """
+        Retrieve a message rating.
+        """
+
+        def get(tx):
+            return tx.run(
+                """
+                match (n:Message {id: $id})
+                return n.id as id, n.rating as rating, n.ratingMessage as rating_message
+                """,
+                id=assistant_message_id,
+            ).values()
+
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                res = session.execute_read(get)[0]
+
+        except ConstraintError as err:
+            print(err)
+            session.close()
+
+        return res
