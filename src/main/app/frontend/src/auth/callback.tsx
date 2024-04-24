@@ -8,12 +8,14 @@ const Callback = () => {
 
   useEffect(() => {
     const doAsync = async () => {
-      await auth.handleAuthentication({ caller: 'callback' });
-      const redirectUrl = getDynamicConfigValue('REACT_APP_HIVE_UI') || '/';
-      navigate(redirectUrl);
-    };
+      await auth.handleAuthentication();
+      const redirectUrl = '/';
+      navigate(redirectUrl, {replace:true});
+  };
 
-    doAsync();
+  doAsync().catch(error => {
+    console.error("Failed to complete authentication process:", error);
+  });
   }, [navigate]);
 
   const style: React.CSSProperties = {

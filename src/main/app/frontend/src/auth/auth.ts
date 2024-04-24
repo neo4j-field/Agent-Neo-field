@@ -14,9 +14,10 @@ class Auth {
     userAccessInfo: Record<string, unknown>;
 
     constructor() {
+        console.log("Initializing Auth0 configuration");
         this.auth0 = new auth0.WebAuth({
             domain: getDynamicConfigValue('REACT_APP_AUTH_DOMAIN')!,
-            clientID: getDynamicConfigValue('REACT_APP_AUTH_CLIENT_ID')!,
+            clientID: getDynamicConfigValue('REACT_APP_AUTH_CLIENT_ID')!, // I don't think I even need this... isn't this if deploying it to hive?
             redirectUri: getDynamicConfigValue('REACT_APP_AUTH_CALLBACK')!,
             responseType: 'token id_token',
             scope: 'openid email profile'
@@ -30,6 +31,7 @@ class Auth {
     }
 
     login() :void {
+        console.log("Triggering login");
         this.auth0.authorize({
             prompt: "select_account"
         });
@@ -41,30 +43,39 @@ class Auth {
   }
 
     async handleAuthentication(){
+        console.log("Handling authentication");
         const promise = new Promise<void>((resolve, reject) => {
             this.auth0.parseHash(async (err: auth0.Auth0ParseHashError | null, authResult: auth0.Auth0DecodedHash | null) => {
-                if (err) return reject(err);
+                if (err) {
+                    console.error("Error parsing hash", err);
+                    return reject(err);
+                }
                 if (!authResult || !authResult.idToken) {
+                    console.error("Invalid authentication result", authResult);
                     return reject(new Error("Invalid authentication result"));
                 }
+                console.log("Authentication successful, setting session");
                 this.setSession(authResult);
-            resolve();
+                resolve();
             });
         });
         return await promise;
     }
     silentAuth = async (): Promise<boolean> => {
+        console.log("Performing silent authentication check");
         return new Promise((resolve, reject) => {
             this.auth0.checkSession({}, (err, authResult?: AuthResult) => {
                 if (err) {
-                    console.error('Silent authentication error: ', err);
+                    console.error('Silent authentication error, login required: ', err);
                     reject(err);
                 }
                 else if (authResult && authResult.idToken) {
+                    console.log("Silent authentication successful, updating session");
                     this.setSession(authResult);
                     resolve(true);
                 }
                 else {
+                    console.log("Silent authentication failed, no idToken received");
                     resolve(false);
                 }
             });
@@ -72,6 +83,7 @@ class Auth {
   };
 
     setSession(authResult: auth0.Auth0DecodedHash) {
+        console.log("Setting session storage with auth results");
         const expiresIn = authResult.expiresIn ?? 3600;
         const expiresAt: number = expiresIn * 1000 + new Date().getTime();
 
@@ -82,7 +94,6 @@ class Auth {
             console.warn('AccessToken is undefined.');
         }
 
-    // Check and set id_token
         if (authResult.idToken) {
             localStorage.setItem('id_token', authResult.idToken);
         }
@@ -94,9 +105,14 @@ class Auth {
 
         localStorage.setItem('expires_at', `${expiresAt}`);
         localStorage.setItem('link_idx', '1');
+
+        // Redirect to the home page after successful login
+        console.log("Session set, redirecting to home");
+        window.location.href = '/';
     }
 
     removeLocalStorageItems(): void{
+        console.log("Clearing local storage items");
         localStorage.remove('user');
         localStorage.remove('access_token');
         localStorage.remove('id_token');
@@ -107,12 +123,12 @@ class Auth {
         this.removeLocalStorageItems();
         const authDomain = getDynamicConfigValue('REACT_APP_AUTH_DOMAIN' || 'REACT_APP_AUTH_DOMAIN not specified');
         const logoutUrl = getDynamicConfigValue("REACT_APP_AUTH_LOGOUT_URL") || "REACT_APP_AUTH_LOGOUT_URL not specified";
-        const clientId = getDynamicConfigValue("REACT_APP_AUTH_CLIENT_ID") || "REACT_APP_AUTH_CLIENT_ID not specified";
-        window.location.replace(`https://${authDomain}/v2/logout/?returnTo=${logoutUrl}&client_id=${clientId}`);
+        window.location.replace(`https://${authDomain}/v2/logout/?returnTo=${logoutUrl}`); // do I even need client id here
 
     }
 
     isAuthenticated(): boolean {
+         console.log("Checking if user is authenticated");
          if (this.isAuth0()) {
             const expiresAt = Number(localStorage.getItem('expires_at') || '0');
             return new Date().getTime() < expiresAt;
@@ -123,5 +139,5 @@ class Auth {
 
 }
 
-    const auth = new Auth();
-    export default auth;
+const auth = new Auth();
+export default auth;

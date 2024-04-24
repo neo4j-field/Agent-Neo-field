@@ -1,14 +1,14 @@
 import React, { createContext, useEffect, useState } from 'react';
 import {BrowserRouter as Router, Route, Routes} from 'react-router-dom'; // Use BrowserRouter and import Switch
-import Callback from "../auth/callback";
+import Callback from "./auth/callback";
 import HomePage from "./HomePage"; // Make sure this path is correct
-import PrivateRoute from "../auth/privateRoute"; // Make sure this path is correct
+import PrivateRoute from "./auth/privateRoute"; // Make sure this path is correct
 import { NeedleThemeProvider, Logo, Typography } from '@neo4j-ndl/react';
 import './tailwind.css';
 import '@neo4j-ndl/base/lib/neo4j-ds-styles.css';
 import { Settings, AppContextType } from './types/types'; // Ensure these are correct
-import { getDynamicConfigValue } from '../auth/dynamicConfig';
-import auth from '../auth/auth';
+import { getDynamicConfigValue } from './auth/dynamicConfig';
+import auth from './auth/auth';
 
 
 
@@ -81,7 +81,7 @@ function App() {
                     <Routes>
                         <Route path="/callback" element={<Callback />} />
                         <Route path="/" element={
-                            <PrivateRoute
+                            <PrivateRoute path={"/"}
                               appIsInitialized={appIsInitialized}
                               element={<HomePage />}
                             />
