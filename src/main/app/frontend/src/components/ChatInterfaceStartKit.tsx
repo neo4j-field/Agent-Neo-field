@@ -5,6 +5,9 @@ import { AppContext } from '../App';
 import {Avatar, Button, TextInput, Typography, Widget} from "@neo4j-ndl/react";
 import ChatBotAvatar from './assets/chatbot-ai.png';
 import ChatBotUserAvatar from './assets/chatbot-user.png';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 
 function ChatInterface() {
 
@@ -158,10 +161,10 @@ function ChatInterface() {
                   }}
                 >
                   <div style={{ flexGrow: 1 }}>
-                  <Typography variant='body-medium'>{chat.text}</Typography>
+                  <Markdown remarkPlugins={[remarkGfm]}>{chat.text}</Markdown>
                   </div>
                   <div style={{ textAlign: 'right', verticalAlign: 'bottom', paddingTop: '12px' }}>
-                    <Typography variant='body-small'>2024-01-01 09:00:00</Typography>
+                    <Typography variant='body-small'>{Date.now()}</Typography>
                   </div>
                 </Widget>
               </div>

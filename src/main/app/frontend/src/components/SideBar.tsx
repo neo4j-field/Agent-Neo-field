@@ -59,11 +59,11 @@ function Sidebar() {
                     size="small"
                     className="w-full"
                 >
-                    {['chat-bison 2k', 'chat-bison 32k', 'GPT-4 8k', 'GPT-4 32k'].map((llm) => (
+                    {['Gemini', 'GPT-4 8k', 'GPT-4 32k'].map((llm) => (
                         <SegmentedControl.Item
                             key={llm}
                             value={llm}
-                            className="min-w-0 flex-1 text-xs px-2 truncate"
+                            className="min-w-0 flex-1 text-xs px-2"
                         >
                             <Typography variant="body-small" className="truncate">
                                 {llm}
