@@ -81,7 +81,7 @@ function App() {
                     <Routes>
                         <Route path="/callback" element={<Callback />} />
                         <Route path="/" element={
-                            <PrivateRoute path={"/"}
+                            <PrivateRoute
                               appIsInitialized={appIsInitialized}
                               element={<HomePage />}
                             />
