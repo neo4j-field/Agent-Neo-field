@@ -10,10 +10,6 @@ import { Settings, AppContextType } from './types/types'; // Ensure these are co
 import { getDynamicConfigValue } from './auth/dynamicConfig';
 import auth from './auth/auth';
 
-
-
-
-
 //A default App context.
 const defaultAppContextValue: AppContextType = {
   settings: {
@@ -64,16 +60,18 @@ function App() {
                     else {
                         console.error('Authentication error: ', error);
                         alert('An unknown error occurred. Please check the console for details.');
+                    }
                 }
             }
-        }
-    };
+        };
+
         initializeApp().catch(error => {
-        console.error("Failed to initialize app:", error);
-    });
+            console.error("Failed to initialize app:", error);
+        });
 
-}, []);
+    }, []);
 
+    //console.log(`window.location.pathname: ${window.location.pathname}`);
     return (
         <NeedleThemeProvider theme={theme} wrapperProps={{ isWrappingChildren: false }}>
             <AppContext.Provider value={{ settings, setSettings, toggleTheme, theme }}>
@@ -82,8 +80,8 @@ function App() {
                         <Route path="/callback" element={<Callback />} />
                         <Route path="/" element={
                             <PrivateRoute
-                              appIsInitialized={appIsInitialized}
-                              element={<HomePage />}
+                                appIsInitialized={appIsInitialized}
+                                element={<HomePage />}
                             />
                         } />
                     </Routes>
