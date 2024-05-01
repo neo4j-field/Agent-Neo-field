@@ -11,12 +11,14 @@ from objects.nodes import UserMessage, AssistantMessage
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
 from tools.embedding import TextEmbeddingService
 from tools.llm import LLM
+from tools.secret_manager import SecretManager
 
 PUBLIC = True
 
+sm = SecretManager()
 router = APIRouter()
-reader = GraphReader()
-writer = GraphWriter()
+reader = GraphReader(secret_manager=sm)
+writer = GraphWriter(secret_manager=sm)
 
 
 # Todo: Implement bearer tokens in the backend?

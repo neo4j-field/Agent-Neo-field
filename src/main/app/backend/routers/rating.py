@@ -2,9 +2,11 @@ from fastapi import APIRouter
 
 from database.communicator import GraphWriter
 from objects.rating import Rating
+from tools.secret_manager import SecretManager
 
+sm = SecretManager()
 router = APIRouter()
-writer = GraphWriter()
+writer = GraphWriter(secret_manager=sm)
 
 
 @router.post("/rating")
