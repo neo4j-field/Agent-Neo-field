@@ -1,22 +1,21 @@
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import auth from './auth';
 import { getDynamicConfigValue } from './dynamicConfig';
 
 const Callback = () => {
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const doAsync = async () => {
-      await auth.handleAuthentication();
+    const doAsync = async () => { 
+      try {
+        await auth.handleAuthentication();
+      } catch (e) {
+        console.log('error calling handleAuthentication', e);
+      }
       const redirectUrl = '/';
-      navigate(redirectUrl, {replace:true});
-  };
-
-  doAsync().catch(error => {
-    console.error("Failed to complete authentication process:", error);
-  });
-  }, [navigate]);
+      window.location.replace(redirectUrl);
+    }
+    doAsync();
+  }, []);
 
   const style: React.CSSProperties = {
     position: "absolute",

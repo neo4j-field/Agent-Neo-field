@@ -61,6 +61,7 @@ class Auth {
         });
         return await promise;
     }
+
     silentAuth = async (): Promise<boolean> => {
         console.log("Performing silent authentication check");
         return new Promise((resolve, reject) => {
@@ -107,8 +108,11 @@ class Auth {
         localStorage.setItem('link_idx', '1');
 
         // Redirect to the home page after successful login
-        console.log("Session set, redirecting to home");
-        window.location.href = '/';
+
+        // Note: not redirecting here, this will be handled in callback.tsx
+        console.log("Session set");
+        // console.log("Session set, redirecting to home");
+        // window.location.href = '/';
     }
 
     removeLocalStorageItems(): void{
