@@ -19,6 +19,8 @@ reader = GraphReader()
 writer = GraphWriter()
 
 
+# Todo: Implement bearer tokens in the backend?
+# right now anyone with the url and the endpoints can hit them
 @router.post("/llm_dummy", response_model=Response)
 async def get_response(
     question: Question, background_tasks: BackgroundTasks
@@ -160,6 +162,7 @@ def log_assistant_message(
         previous_message_id=previous_message_id,
         context_ids=context_ids,
     )
+
 
 
 def get_prompt(context: List[str]) -> str:

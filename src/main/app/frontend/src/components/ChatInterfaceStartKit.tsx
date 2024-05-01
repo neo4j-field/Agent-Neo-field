@@ -5,6 +5,7 @@ import { AppContext } from '../App';
 import {Avatar, Button, TextInput, Typography, Widget} from "@neo4j-ndl/react";
 import ChatBotAvatar from './assets/chatbot-ai.png';
 import ChatBotUserAvatar from './assets/chatbot-user.png';
+import { fetchWithAuth } from '../api/api';  // Correctly import fetchWithAuth
 
 function ChatInterface() {
 
@@ -24,41 +25,36 @@ function ChatInterface() {
         setIsSubmitting(true);
 
         const requestBody: ApiRequestBody = {
-            session_id: sessionId,
-            conversation_id: conversationId,
-            question: inputText,
-            llm_type: settings.selectedLLM,
-            temperature: settings.temperature,
-            number_of_documents: settings.useGrounding ? settings.contextDocuments : 0,
-            message_history: messageHistory,
-        };
+        session_id: sessionId,
+        conversation_id: conversationId,
+        question: inputText,
+        llm_type: settings.selectedLLM,
+        temperature: settings.temperature,
+        number_of_documents: settings.useGrounding ? settings.contextDocuments : 0,
+        message_history: messageHistory,
+    };
 
-        try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_ADDRESS}/llm`, {
-                method: 'POST',
-                headers: {
-                    'accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
+    try {
+        const responseData: ApiResponse = await fetchWithAuth({
+            endpoint: '/llm',
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
 
-            const responseData: ApiResponse = await response.json();
-
-            if (!response.ok) {
-                throw new Error( "HTTP error: ${response.status}");
-            }
-
-            setMessageHistory(responseData.message_history || []);
-            setIsResponseOk(true);
-            return responseData.content;
-            } catch (error) {
-                 setIsResponseOk(false);
-                 console.error("API call failed:", error);
-                 return "Sorry, something went wrong.";
-            } finally {
-                setIsSubmitting(false);
-            }
+        setMessageHistory(prevHistory => responseData.message_history || prevHistory);
+        setIsResponseOk(true);
+        return responseData.content;
+    } catch (error) {
+        console.error("API call failed:", error);
+        setIsResponseOk(false);
+        return "Sorry, something went wrong.";
+    } finally {
+        setIsSubmitting(false);
+    }
 };
 
 
