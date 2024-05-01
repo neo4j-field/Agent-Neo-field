@@ -2,10 +2,15 @@ import os
 import time
 import unittest
 
+from dotenv import load_dotenv
+from neo4j import Driver
+
+
 from database.communicator import GraphWriter, GraphReader
 from objects.nodes import UserMessage, AssistantMessage
 from objects.rating import Rating
 from resources.prompts.prompts import prompt_template
+from tools.secret_manager import SecretManager
 
 test_ids = {
     "session_id": "s-123-test",
@@ -24,18 +29,29 @@ class TestGraphWriter(unittest.TestCase):
             os.environ.get("DATABASE_TYPE") == "dev"
         ), f"Current db is {os.environ.get('DATABASE_TYPE')}. Please change to dev for testing."
 
+        cls.sm = SecretManager()
         # ensure no test data in database
-        gw = GraphWriter()
+        gw = GraphWriter(secret_manager=cls.sm)
         gw.delete_by_id(list(test_ids.values()))
         gw.close_driver()
 
     def test_init(self) -> None:
+        gw = GraphWriter(secret_manager=self.sm)
+        gw.close_driver()
+    
+    def test_init_via_env_variables(self) -> None:
+        if not load_dotenv():
+            print("No .env file loaded...")
+        
         gw = GraphWriter()
+        self.assertIsInstance(gw.driver, Driver)
         gw.close_driver()
 
+
+
     def test_new_conversation(self) -> None:
-        gw = GraphWriter()
-        gr = GraphReader()
+        gw = GraphWriter(secret_manager=self.sm)
+        gr = GraphReader(secret_manager=self.sm)
 
         user_message = UserMessage(
             session_id=test_ids["session_id"],
@@ -70,8 +86,8 @@ class TestGraphWriter(unittest.TestCase):
         self.assertEqual(num_nodes, 3)
 
     def test_log_user(self) -> None:
-        gw = GraphWriter()
-        gr = GraphReader()
+        gw = GraphWriter(secret_manager=self.sm)
+        gr = GraphReader(secret_manager=self.sm)
 
         gw.write_dummy_node(id=test_ids["assistant_id"], label="Message")
         user_message = UserMessage(
@@ -94,8 +110,8 @@ class TestGraphWriter(unittest.TestCase):
         self.assertEqual(num_nodes, 2)
 
     def test_log_assistant(self) -> None:
-        gw = GraphWriter()
-        gr = GraphReader()
+        gw = GraphWriter(secret_manager=self.sm)
+        gr = GraphReader(secret_manager=self.sm)
 
         gw.write_dummy_node(id=test_ids["user_id"], label="Message")
         gw.write_dummy_node(id=test_ids["document_id"], label="Document")
@@ -131,8 +147,8 @@ class TestGraphWriter(unittest.TestCase):
         self.assertEqual(num_nodes, 3)
 
     def test_write_dummy_node(self) -> None:
-        gw = GraphWriter()
-        gr = GraphReader()
+        gw = GraphWriter(secret_manager=self.sm)
+        gr = GraphReader(secret_manager=self.sm)
 
         gw.write_dummy_node(id=test_ids["conversation_id"], label="Conversation")
 
@@ -145,8 +161,8 @@ class TestGraphWriter(unittest.TestCase):
         self.assertEqual(num_nodes, 1)
 
     def test_rate_message(self) -> None:
-        gw = GraphWriter()
-        gr = GraphReader()
+        gw = GraphWriter(secret_manager=self.sm)
+        gr = GraphReader(secret_manager=self.sm)
 
         gw.write_dummy_node(id=test_ids["assistant_id"], label="Message")
         r = Rating(

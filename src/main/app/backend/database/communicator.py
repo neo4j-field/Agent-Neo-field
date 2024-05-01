@@ -1,16 +1,7 @@
 import os
 import time
-from typing import List, Optional
+from typing import List, Optional, Union
 
-import uuid
-
-# from graphdatascience import GraphDataScience
-
-from langchain_google_vertexai import ChatVertexAI
-from langchain_openai import AzureChatOpenAI
-from langchain.chains import ConversationChain
-from langchain.memory import ConversationSummaryBufferMemory
-from langchain.prompts.prompt import PromptTemplate
 from neo4j.exceptions import ConstraintError
 import openai
 import pandas as pd
@@ -21,42 +12,40 @@ from objects.nodes import UserMessage, AssistantMessage
 from objects.rating import Rating
 
 
-# PUBLIC = 'false'
-
-# AUTHENTICATE SERVICE ACCOUNT
-# google_credentials = service_account.Credentials.from_service_account_info(
-#     sm.access_secret_version("google_service_account")
-# )
-
-
 class Communicator:
     """
-    The constructor expects an instance of the Neo4j Driver, which will be
-    used to interact with Neo4j.
-    This class contains methods necessary to interact with the Neo4j database
-    and manage conversations with the chosen LLM.
+    Base class for graph reader and writer.
     """
 
-    sm = SecretManager()
+    def __init__(self, secret_manager: Optional[SecretManager] = None) -> None:
+        
+        if secret_manager is not None:
+            print("Grabbing secrets from GCP.")
+            # AUTHENTICATE OPENAI
+            openai.api_key = secret_manager.access_secret_version("openai_key")
+            openai.api_version = secret_manager.access_secret_version("openai_version")
+            self.driver = drivers.init_driver(
+                uri=secret_manager.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"),
+                username=secret_manager.access_secret_version("neo4j_username"),
+                password=secret_manager.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_password")
+                    )
+            self.database_name = secret_manager.access_secret_version("neo4j_database")
+            self.project = os.getenv("GCP_PROJECT_ID")
+            self.region = secret_manager.access_secret_version("gcp_region")
+        else:
+            print("Grabbing secrets from environment variables.")
+            openai.api_key = os.environ.get("OPENAI_API_KEY")
+            openai.api_version = os.environ.get("OPENAI_VERSION")
+            self.driver = drivers.init_driver(
+                uri=os.environ.get("NEO4J_URI"),
+                username=os.environ.get("NEO4J_USERNAME"),
+                password=os.environ.get('NEO4J_PASSWORD')
+            )
+            self.database_name = os.environ.get("NEO4J_DATABASE")
+            self.project = os.environ.get("GCP_PROJECT_ID")
+            self.region = os.environ.get("GCP_REGION")
 
-    # AUTHENTICATE OPENAI
-    openai.api_key = sm.access_secret_version("openai_key")
-    openai.api_version = sm.access_secret_version("openai_version")
 
-    def __init__(self) -> None:
-
-        self.driver = drivers.init_driver(
-            uri=self.sm.access_secret_version(
-                f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"
-            ),
-            username=self.sm.access_secret_version("neo4j_username"),
-            password=self.sm.access_secret_version(
-                f"neo4j_{os.environ.get('DATABASE_TYPE')}_password"
-            ),
-        )
-        self.database_name = self.sm.access_secret_version("neo4j_database")
-        self.project = os.getenv("GCP_PROJECT_ID")
-        self.region = self.sm.access_secret_version("gcp_region")
 
     def close_driver(self) -> None:
         """
@@ -68,8 +57,8 @@ class Communicator:
 
 class GraphWriter(Communicator):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, secret_manager: Optional[SecretManager] = None) -> None:
+        super().__init__(secret_manager)
 
     def log_new_conversation(
         self, message: UserMessage, llm_type: str, temperature: float
@@ -96,10 +85,11 @@ class GraphWriter(Communicator):
                 m.content = $content,
                 m.role = $role, 
                 m.postTime = datetime(),
-                m.embedding = $embedding,
                 m.public = toBoolean($public)
+
+            with c, m
+            call db.create.setNodeVectorProperty(m, 'embedding', $embedding)
             
-            with c
             merge (s:Session {id: $sessionId})
             on create set s.createTime = datetime()
             merge (s)-[:HAS_CONVERSATION]->(c)
@@ -139,15 +129,17 @@ class GraphWriter(Communicator):
             set m.content = $content,
                 m.role = $role, 
                 m.postTime = datetime(),
-                m.embedding = $embedding, 
                 m.public = toBoolean($public)
-                   
+            
+            with m, pm
+            call db.create.setNodeVectorProperty(m, 'embedding', $embedding)
+
             merge (pm)-[:NEXT]->(m)
                       """,
                 prevMessId=previous_message_id,
                 messId=message.message_id,
                 content=message.content,
-                embedding=message.content,
+                embedding=message.embedding,
                 role="user",
                 public=message.public,
             )
@@ -317,8 +309,8 @@ class GraphWriter(Communicator):
 
 class GraphReader(Communicator):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, secret_manager: Optional[SecretManager] = None) -> None:
+        super().__init__(secret_manager)
 
     def retrieve_context_documents(
         self, question_embedding: List[float], number_of_context_documents: int = 10
