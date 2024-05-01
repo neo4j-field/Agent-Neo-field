@@ -25,6 +25,13 @@ export interface Message {
 }
 
 
+export interface FetchOptions {
+  endpoint: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: { [key: string]: string };
+  body?: string;
+}
+
 //todo: might need to refactor
 export interface ApiRequestBody {
   session_id: string;
@@ -42,3 +49,4 @@ export interface ApiResponse {
   content: string; // Ensure this property is included
   message_history?: string[]; // This is correctly optional
 }
+
