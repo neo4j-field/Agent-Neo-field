@@ -38,16 +38,14 @@ class TestGraphWriter(unittest.TestCase):
     def test_init(self) -> None:
         gw = GraphWriter(secret_manager=self.sm)
         gw.close_driver()
-    
+
     def test_init_via_env_variables(self) -> None:
         if not load_dotenv():
             print("No .env file loaded...")
-        
+
         gw = GraphWriter()
         self.assertIsInstance(gw.driver, Driver)
         gw.close_driver()
-
-
 
     def test_new_conversation(self) -> None:
         gw = GraphWriter(secret_manager=self.sm)

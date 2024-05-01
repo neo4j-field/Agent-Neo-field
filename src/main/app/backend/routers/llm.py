@@ -164,7 +164,6 @@ def log_assistant_message(
     )
 
 
-
 def get_prompt(context: List[str]) -> str:
     """
     Determine the prompt used for LLM query.

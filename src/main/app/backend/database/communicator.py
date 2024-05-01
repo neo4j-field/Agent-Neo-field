@@ -18,17 +18,21 @@ class Communicator:
     """
 
     def __init__(self, secret_manager: Optional[SecretManager] = None) -> None:
-        
+
         if secret_manager is not None:
             print("Grabbing secrets from GCP.")
             # AUTHENTICATE OPENAI
             openai.api_key = secret_manager.access_secret_version("openai_key")
             openai.api_version = secret_manager.access_secret_version("openai_version")
             self.driver = drivers.init_driver(
-                uri=secret_manager.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"),
+                uri=secret_manager.access_secret_version(
+                    f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"
+                ),
                 username=secret_manager.access_secret_version("neo4j_username"),
-                password=secret_manager.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_password")
-                    )
+                password=secret_manager.access_secret_version(
+                    f"neo4j_{os.environ.get('DATABASE_TYPE')}_password"
+                ),
+            )
             self.database_name = secret_manager.access_secret_version("neo4j_database")
             self.project = os.getenv("GCP_PROJECT_ID")
             self.region = secret_manager.access_secret_version("gcp_region")
@@ -39,13 +43,11 @@ class Communicator:
             self.driver = drivers.init_driver(
                 uri=os.environ.get("NEO4J_URI"),
                 username=os.environ.get("NEO4J_USERNAME"),
-                password=os.environ.get('NEO4J_PASSWORD')
+                password=os.environ.get("NEO4J_PASSWORD"),
             )
             self.database_name = os.environ.get("NEO4J_DATABASE")
             self.project = os.environ.get("GCP_PROJECT_ID")
             self.region = os.environ.get("GCP_REGION")
-
-
 
     def close_driver(self) -> None:
         """
