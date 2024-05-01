@@ -1,5 +1,6 @@
 import os
 from typing import List, Dict, Union, Tuple
+from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks
 
@@ -65,19 +66,23 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
                                                 number_of_context_documents=question.number_of_documents)
     # print(context)
     print("context retrieved...")
-    llm = LLM(llm_type="GPT-4 8k", temperature=question.temperature)
+    llm = LLM(llm_type=question.llm_type, temperature=question.temperature)
     print("llm initialized...")
-    llm_response = llm.get_response(question=question.question, context=context)
+    user_id: str = "user-"+str(uuid4())
+    assistant_id: str = "llm-"+str(uuid4())
+    llm_response = llm.get_response(question=question, context=context, user_id=user_id, assistant_id=assistant_id)
     print("response retrieved...")
     print(llm_response)
     user_message = UserMessage(session_id=question.session_id,
                                conversation_id=question.conversation_id,
+                               message_id=user_id,
                                content=question.question,
                                embedding=question_embedding,
                                public=PUBLIC)
 
     assistant_message = AssistantMessage(session_id=question.session_id,
                                          conversation_id=question.conversation_id,
+                                         message_id=assistant_id,
                                          prompt=get_prompt(context=context),
                                          content=llm_response.content,
                                          public=PUBLIC,

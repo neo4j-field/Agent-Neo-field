@@ -2,12 +2,15 @@ import os
 from typing import List, Dict, Tuple
 
 import openai
-from langchain_community.chat_models import ChatVertexAI, AzureChatOpenAI
+from langchain_community.chat_models import AzureChatOpenAI
+# from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_openai import OpenAI
 # from langchain.chains import ConversationChain
 import pandas as pd
 from pydantic import BaseModel
 
+from objects.question import Question
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
 
 from tools.secret_manager import SecretManager
@@ -51,6 +54,8 @@ class LLM(BaseModel):
                         top_p=0.95, # default is 0.95
                         top_k = 40 # default is 40
                        )
+            case "Gemini":
+                self.llm_instance = ChatVertexAI(model_name="gemini-pro")
             case "GPT-4 8k":
                 # Tokens per Minute Rate Limit (thousands): 10
                 # Rate limit (Tokens per minute): 10000
@@ -92,13 +97,19 @@ class LLM(BaseModel):
             print("creating non-context prompt...")
             return prompt_no_context_template.format(question=question)
                     
-    def get_response(self, question: str, context: pd.DataFrame | None = None) -> str:
+    def get_response(self, question: Question, user_id: str, assistant_id: str, context: pd.DataFrame | None = None) -> str:
         """
         Get a response from the LLM.
         """
 
-        llm_input = self._format_llm_input(question=question, context=context)
+        llm_input = self._format_llm_input(question=question.question, context=context)
 
         print("llm input: ", llm_input)
         # return self.llm_instance.predict(llm_input)
-        return self.llm_instance.invoke(llm_input)
+        return self.llm_instance.invoke(llm_input, {"metadata": {"conversation_id": question.conversation_id, 
+                                                                 "session_id": question.session_id,
+                                                                 "user_id": user_id,
+                                                                 "assistant_id": assistant_id
+                                                                 }
+                                                    }
+                                        )
