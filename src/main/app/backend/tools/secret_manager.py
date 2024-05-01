@@ -3,9 +3,10 @@ import json
 
 from google.cloud import secretmanager
 
+
 class SecretManager:
     def __init__(self, project_id: str = None):
-        self.project_id = project_id or os.getenv('GCP_PROJECT_ID')
+        self.project_id = project_id or os.getenv("GCP_PROJECT_ID")
         self.client = secretmanager.SecretManagerServiceClient()
 
     def access_secret_version(self, secret_id, version_id="latest"):
