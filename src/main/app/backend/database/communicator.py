@@ -17,7 +17,7 @@ class Communicator:
     Base class for graph reader and writer.
     """
 
-    def __init__(self, secret_manager: Optional[SecretManager] = None) -> None:
+    def __init__(self, secret_manager: Optional[SecretManager]) -> None:
 
         if secret_manager is not None:
             print("Grabbing secrets from GCP.")

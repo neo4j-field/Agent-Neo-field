@@ -2,14 +2,14 @@ import os
 from typing import List, Dict, Union, Tuple
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from database.communicator import GraphReader, GraphWriter
 from objects.question import Question
 from objects.response import Response
 from objects.nodes import UserMessage, AssistantMessage
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
-from tools.embedding import TextEmbeddingService
+from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol
 from tools.llm import LLM
 from tools.secret_manager import SecretManager
 
@@ -17,9 +17,36 @@ PUBLIC = True
 
 sm = SecretManager()
 router = APIRouter()
-reader = GraphReader(secret_manager=sm)
-writer = GraphWriter(secret_manager=sm)
+# background_reader = GraphReader(secret_manager=sm)
+background_writer = GraphWriter(secret_manager=sm)
 
+
+def get_reader():
+    reader = GraphReader(secret_manager=sm)
+    try:
+        yield reader
+    finally:
+        reader.close_driver()
+
+
+def get_writer():
+    writer = GraphWriter(secret_manager=sm)
+    try:
+        yield writer
+    finally:
+        writer.close_driver()
+
+
+def get_embedding_service() -> EmbeddingServiceProtocol:
+    return TextEmbeddingService()
+
+def get_llm(question: Question) -> LLM:
+    return LLM(llm_type=question.llm_type, temperature=question.temperature)
+
+
+@router.get("/")
+def get_default() -> str:
+    return "Agent Neo backend is live."
 
 # Todo: Implement bearer tokens in the backend?
 # right now anyone with the url and the endpoints can hit them
@@ -30,7 +57,7 @@ async def get_response(
     """
     Dummy test.
     """
-    print("dummy test")
+
     question_embedding = [0.321, 0.123]
     llm_response = "This call works!"
 
@@ -68,14 +95,17 @@ async def get_response(
 
 @router.post("/llm", response_model=Response)
 async def get_response(
-    question: Question, background_tasks: BackgroundTasks
+    question: Question,
+    background_tasks: BackgroundTasks,
+    reader: GraphReader = Depends(get_reader),
+    embedding_service: EmbeddingServiceProtocol = Depends(get_embedding_service),
+    llm: LLM = Depends(get_llm)
 ) -> Response:
     """
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
     """
 
-    print("real call")
-    question_embedding = TextEmbeddingService().get_embedding(text=question.question)
+    question_embedding = embedding_service.get_embedding(text=question.question)
     print("got embedding...")
     context = reader.retrieve_context_documents(
         question_embedding=question_embedding,
@@ -83,7 +113,7 @@ async def get_response(
     )
     # print(context)
     print("context retrieved...")
-    llm = LLM(llm_type=question.llm_type, temperature=question.temperature)
+    # llm = LLM(llm_type=question.llm_type, temperature=question.temperature)
     print("llm initialized...")
     user_id: str = "user-" + str(uuid4())
     assistant_id: str = "llm-" + str(uuid4())
@@ -137,29 +167,36 @@ async def get_response(
 
 
 def log_user_message(
-    message: UserMessage, message_history: List[str], llm_type: str, temperature: float
+    message: UserMessage,
+    message_history: List[str],
+    llm_type: str,
+    temperature: float,
+    # writer: GraphWriter = Depends(get_writer),
 ) -> None:
     """
     Log a user message in the graph. If this is the first message, then also log the conversation and session.
     """
 
     if len(message_history) == 0:
-        writer.log_new_conversation(
+        background_writer.log_new_conversation(
             message=message, llm_type=llm_type, temperature=temperature
         )
 
     else:
-        writer.log_user(message=message, previous_message_id=message_history[-1])
+        background_writer.log_user(message=message, previous_message_id=message_history[-1])
 
 
 def log_assistant_message(
-    message: AssistantMessage, previous_message_id: str, context_ids: List[str]
+    message: AssistantMessage,
+    previous_message_id: str,
+    context_ids: List[str],
+    # writer: GraphWriter = Depends(get_writer),
 ) -> None:
     """
     Log an assistant message in the graph.
     """
 
-    writer.log_assistant(
+    background_writer.log_assistant(
         message=message,
         previous_message_id=previous_message_id,
         context_ids=context_ids,
