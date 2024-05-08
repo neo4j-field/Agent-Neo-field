@@ -1,0 +1,8 @@
+OPENAI_API_KEY="sk-..."
+OPENAI_VERSION="2023-03-15-preview"
+NEO4J_URI="neo4j+s://abc123.databases.neo4j.io"
+NEO4J_USERNAME="neo4j"
+NEO4J_PASSWORD="password"
+NEO4J_DATABASE="neo4j"
+GCP_PROJECT_ID="proj-123"
+GCP_REGION="us-central1"
