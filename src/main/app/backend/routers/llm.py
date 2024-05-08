@@ -40,6 +40,7 @@ def get_writer():
 def get_embedding_service() -> EmbeddingServiceProtocol:
     return TextEmbeddingService()
 
+
 def get_llm(question: Question) -> LLM:
     return LLM(llm_type=question.llm_type, temperature=question.temperature)
 
@@ -48,12 +49,11 @@ def get_llm(question: Question) -> LLM:
 def get_default() -> str:
     return "Agent Neo backend is live."
 
+
 # Todo: Implement bearer tokens in the backend?
 # right now anyone with the url and the endpoints can hit them
 @router.post("/llm_dummy", response_model=Response)
-async def get_response(
-    question: Question, background_tasks: BackgroundTasks
-) -> Response:
+async def get_response(question: Question) -> Response:
     """
     Dummy test.
     """
@@ -72,16 +72,12 @@ async def get_response(
     assistant_message = AssistantMessage(
         session_id=question.session_id,
         conversation_id=question.conversation_id,
-        prompt="",
+        prompt=prompt_no_context_template,
         content=llm_response,
         public=PUBLIC,
         vectorIndexSearch=True,
         number_of_documents=question.number_of_documents,
         temperature=question.temperature,
-    )
-
-    background_tasks.add_task(
-        write_notification, question.question, message="some notification"
     )
 
     return Response(
@@ -99,7 +95,7 @@ async def get_response(
     background_tasks: BackgroundTasks,
     reader: GraphReader = Depends(get_reader),
     embedding_service: EmbeddingServiceProtocol = Depends(get_embedding_service),
-    llm: LLM = Depends(get_llm)
+    llm: LLM = Depends(get_llm),
 ) -> Response:
     """
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
@@ -183,7 +179,9 @@ def log_user_message(
         )
 
     else:
-        background_writer.log_user(message=message, previous_message_id=message_history[-1])
+        background_writer.log_user(
+            message=message, previous_message_id=message_history[-1]
+        )
 
 
 def log_assistant_message(
@@ -209,9 +207,3 @@ def get_prompt(context: List[str]) -> str:
     """
 
     return prompt_no_context_template if len(context) < 1 else prompt_template
-
-
-def write_notification(email: str, message=""):
-    with open("dummy_log.txt", mode="w") as email_file:
-        content = f"notification for {email}: {message}"
-        email_file.write(content)

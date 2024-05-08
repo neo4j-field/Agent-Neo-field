@@ -26,6 +26,7 @@ class TextEmbeddingService:
         embeddings = self.model.get_embeddings([text])
         return embeddings[0].values
 
+
 class FakeEmbeddingService:
     def get_embedding(self, text: str) -> List[float]:
         return [random.random() for _ in range(768)]
