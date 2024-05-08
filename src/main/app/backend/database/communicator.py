@@ -159,7 +159,7 @@ class GraphWriter(Communicator):
         message: AssistantMessage,
         previous_message_id: str,
         context_ids: List[str],
-    ):
+    ) -> None:
         """
         This method logs a new assistant message to the neo4j database and
         creates appropriate relationships.

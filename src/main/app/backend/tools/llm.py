@@ -52,7 +52,7 @@ class LLM(BaseModel):
         match self.llm_type:
             case "fake":
                 return FakeListChatModel(
-                    responses=["GDS is cool.", "Neo4j is a graph database."]
+                    responses=["GDS is cool."]
                 )
             case "chat-bison 2k":
                 return ChatVertexAI(

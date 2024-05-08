@@ -18,7 +18,7 @@ PUBLIC = True
 sm = SecretManager()
 router = APIRouter()
 # background_reader = GraphReader(secret_manager=sm)
-background_writer = GraphWriter(secret_manager=sm)
+# background_writer = GraphWriter(secret_manager=sm)
 
 
 def get_reader():
@@ -94,6 +94,7 @@ async def get_response(
     question: Question,
     background_tasks: BackgroundTasks,
     reader: GraphReader = Depends(get_reader),
+    writer: GraphWriter = Depends(get_writer),
     embedding_service: EmbeddingServiceProtocol = Depends(get_embedding_service),
     llm: LLM = Depends(get_llm),
 ) -> Response:
@@ -145,12 +146,14 @@ async def get_response(
         question.message_history,
         question.llm_type,
         question.temperature,
+        writer
     )
     background_tasks.add_task(
         log_assistant_message,
         assistant_message,
         user_message.message_id,
         list(context["index"]),
+        writer
     )
     print("returning...")
     return Response(
@@ -167,19 +170,19 @@ def log_user_message(
     message_history: List[str],
     llm_type: str,
     temperature: float,
-    # writer: GraphWriter = Depends(get_writer),
+    writer: GraphWriter,
 ) -> None:
     """
     Log a user message in the graph. If this is the first message, then also log the conversation and session.
     """
 
     if len(message_history) == 0:
-        background_writer.log_new_conversation(
+        writer.log_new_conversation(
             message=message, llm_type=llm_type, temperature=temperature
         )
 
     else:
-        background_writer.log_user(
+        writer.log_user(
             message=message, previous_message_id=message_history[-1]
         )
 
@@ -188,13 +191,13 @@ def log_assistant_message(
     message: AssistantMessage,
     previous_message_id: str,
     context_ids: List[str],
-    # writer: GraphWriter = Depends(get_writer),
+    writer: GraphWriter,
 ) -> None:
     """
     Log an assistant message in the graph.
     """
 
-    background_writer.log_assistant(
+    writer.log_assistant(
         message=message,
         previous_message_id=previous_message_id,
         context_ids=context_ids,
