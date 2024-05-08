@@ -35,21 +35,30 @@ class GraphReaderMock:
     def retrieve_context_documents(
         self, question_embedding: List[float], number_of_context_documents: int = 10
     ) -> pd.DataFrame:
-        return pd.DataFrame.from_dict({"index": ["a", "b", "c"], "text": ["text a", "text b", "text c"], "url": ["http://a", "http://b", "http://c"]})
-
+        return pd.DataFrame.from_dict(
+            {
+                "index": ["a", "b", "c"],
+                "text": ["text a", "text b", "text c"],
+                "url": ["http://a", "http://b", "http://c"],
+            }
+        )
 
 
 def override_get_reader():
     return GraphReaderMock()
 
+
 def override_get_writer():
     return GraphWriterMock()
+
 
 def override_get_embedding_service():
     return FakeEmbeddingService()
 
+
 def override_get_llm():
-    return LLM(llm_type='fake', temperature=0)
+    return LLM(llm_type="fake", temperature=0)
+
 
 app.dependency_overrides[get_reader] = override_get_reader
 app.dependency_overrides[get_embedding_service] = override_get_embedding_service
@@ -57,7 +66,7 @@ app.dependency_overrides[get_llm] = override_get_llm
 app.dependency_overrides[get_writer] = override_get_writer
 
 
-class TestSession(unittest.TestCase):
+class TestLLMRoute(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:

@@ -51,9 +51,7 @@ class LLM(BaseModel):
 
         match self.llm_type:
             case "fake":
-                return FakeListChatModel(
-                    responses=["GDS is cool."]
-                )
+                return FakeListChatModel(responses=["GDS is cool."])
             case "chat-bison 2k":
                 return ChatVertexAI(
                     model_name="chat-bison",

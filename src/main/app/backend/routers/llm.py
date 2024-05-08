@@ -17,8 +17,6 @@ PUBLIC = True
 
 sm = SecretManager()
 router = APIRouter()
-# background_reader = GraphReader(secret_manager=sm)
-# background_writer = GraphWriter(secret_manager=sm)
 
 
 def get_reader():
@@ -146,14 +144,14 @@ async def get_response(
         question.message_history,
         question.llm_type,
         question.temperature,
-        writer
+        writer,
     )
     background_tasks.add_task(
         log_assistant_message,
         assistant_message,
         user_message.message_id,
         list(context["index"]),
-        writer
+        writer,
     )
     print("returning...")
     return Response(
@@ -182,9 +180,7 @@ def log_user_message(
         )
 
     else:
-        writer.log_user(
-            message=message, previous_message_id=message_history[-1]
-        )
+        writer.log_user(message=message, previous_message_id=message_history[-1])
 
 
 def log_assistant_message(
