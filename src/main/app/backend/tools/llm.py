@@ -103,7 +103,7 @@ class LLM(BaseModel):
             case _:
                 raise ValueError("Please provide a valid LLM type.")
 
-    def _format_llm_input(self, question: str, context: Optional[pd.DataFrame]) -> str:
+    def _format_llm_input(self, question: str, context: Optional[pd.DataFrame] = None) -> str:
         """
         Format the LLM input and return the input along with the context IDs if they exist.
         """
@@ -120,7 +120,7 @@ class LLM(BaseModel):
         question: Question,
         user_id: str,
         assistant_id: str,
-        context: Optional[pd.DataFrame],
+        context: Optional[pd.DataFrame] = None,
     ) -> str:
         """
         Get a response from the LLM.

@@ -8,6 +8,7 @@ from main import app
 from tools.embedding import FakeEmbeddingService
 from tools.llm import LLM
 from objects.nodes import UserMessage, AssistantMessage
+from objects.rating import Rating
 from routers.llm import get_embedding_service, get_llm, get_reader, get_writer
 
 client = TestClient(app)
@@ -30,6 +31,8 @@ class GraphWriterMock:
     ) -> None:
         pass
 
+    def rate_message(rating: Rating) -> None:
+        pass
 
 class GraphReaderMock:
     def retrieve_context_documents(

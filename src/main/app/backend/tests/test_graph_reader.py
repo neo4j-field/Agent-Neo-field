@@ -3,6 +3,7 @@ import unittest
 
 from langchain_community.embeddings import FakeEmbeddings
 from database.communicator import GraphReader
+from tools.secret_manager import SecretManager
 
 
 class TestGraphReader(unittest.TestCase):
@@ -13,13 +14,14 @@ class TestGraphReader(unittest.TestCase):
             os.environ.get("DATABASE_TYPE") == "dev"
         ), f"Current db is {os.environ.get('DATABASE_TYPE')}. Please change to dev for testing."
         cls.embedder = FakeEmbeddings(size=768)
+        cls.sm = SecretManager()
 
     def test_init(self) -> None:
-        gr = GraphReader()
+        gr = GraphReader(secret_manager=self.sm)
         gr.close_driver()
 
     def test_standard_context_retrieval(self) -> None:
-        gr = GraphReader()
+        gr = GraphReader(secret_manager=self.sm)
 
         context = gr.retrieve_context_documents(
             question_embedding=self.embedder.embed_query("What is gds?"),
@@ -35,7 +37,7 @@ class TestGraphReader(unittest.TestCase):
         gr.close_driver()
 
     def test_topics_context_retrieval(self) -> None:
-        # gr = GraphReader()
+        # gr = GraphReader(secret_manager=self.sm)
 
         # context = gr.retrieve_context_documents_by_topic(
         #     question_embedding=self.embedder.embed_query("What is gds?"),
@@ -54,7 +56,7 @@ class TestGraphReader(unittest.TestCase):
         pass  # not implemented
 
     def test_match_by_id(self) -> None:
-        gr = GraphReader()
+        gr = GraphReader(secret_manager=self.sm)
         ids = [
             "conv-20aa11bb-d65b-4c77-a6f3-58a39d8d0205",
             "conv-692266c4-33ba-4f6f-bf41-fcea75fd2579",

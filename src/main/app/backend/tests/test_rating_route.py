@@ -5,15 +5,9 @@ from fastapi.testclient import TestClient
 
 from main import app
 from routers.llm import get_writer
-from objects.rating import Rating
+from tests.test_llm_route import GraphWriterMock
 
 client = TestClient(app)
-
-
-class GraphWriterMock:
-    def rate_message(rating: Rating) -> None:
-        pass
-
 
 def override_get_writer():
     return GraphWriterMock()
