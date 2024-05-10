@@ -2,14 +2,14 @@ import os
 from typing import List, Dict, Union, Tuple
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from database.communicator import GraphReader, GraphWriter
 from objects.question import Question
 from objects.response import Response
 from objects.nodes import UserMessage, AssistantMessage
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
-from tools.embedding import TextEmbeddingService
+from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol
 from tools.llm import LLM
 from tools.secret_manager import SecretManager
 
@@ -17,20 +17,45 @@ PUBLIC = True
 
 sm = SecretManager()
 router = APIRouter()
-reader = GraphReader(secret_manager=sm)
-writer = GraphWriter(secret_manager=sm)
+
+
+def get_reader():
+    reader = GraphReader(secret_manager=sm)
+    try:
+        yield reader
+    finally:
+        reader.close_driver()
+
+
+def get_writer():
+    writer = GraphWriter(secret_manager=sm)
+    try:
+        yield writer
+    finally:
+        writer.close_driver()
+
+
+def get_embedding_service() -> EmbeddingServiceProtocol:
+    return TextEmbeddingService()
+
+
+def get_llm(question: Question) -> LLM:
+    return LLM(llm_type=question.llm_type, temperature=question.temperature)
+
+
+@router.get("/")
+def get_default() -> str:
+    return "Agent Neo backend is live."
 
 
 # Todo: Implement bearer tokens in the backend?
 # right now anyone with the url and the endpoints can hit them
 @router.post("/llm_dummy", response_model=Response)
-async def get_response(
-    question: Question, background_tasks: BackgroundTasks
-) -> Response:
+async def get_response(question: Question) -> Response:
     """
     Dummy test.
     """
-    print("dummy test")
+
     question_embedding = [0.321, 0.123]
     llm_response = "This call works!"
 
@@ -45,16 +70,12 @@ async def get_response(
     assistant_message = AssistantMessage(
         session_id=question.session_id,
         conversation_id=question.conversation_id,
-        prompt="",
+        prompt=prompt_no_context_template,
         content=llm_response,
         public=PUBLIC,
         vectorIndexSearch=True,
         number_of_documents=question.number_of_documents,
         temperature=question.temperature,
-    )
-
-    background_tasks.add_task(
-        write_notification, question.question, message="some notification"
     )
 
     return Response(
@@ -68,14 +89,18 @@ async def get_response(
 
 @router.post("/llm", response_model=Response)
 async def get_response(
-    question: Question, background_tasks: BackgroundTasks
+    question: Question,
+    background_tasks: BackgroundTasks,
+    reader: GraphReader = Depends(get_reader),
+    writer: GraphWriter = Depends(get_writer),
+    embedding_service: EmbeddingServiceProtocol = Depends(get_embedding_service),
+    llm: LLM = Depends(get_llm),
 ) -> Response:
     """
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
     """
 
-    print("real call")
-    question_embedding = TextEmbeddingService().get_embedding(text=question.question)
+    question_embedding = embedding_service.get_embedding(text=question.question)
     print("got embedding...")
     context = reader.retrieve_context_documents(
         question_embedding=question_embedding,
@@ -83,7 +108,7 @@ async def get_response(
     )
     # print(context)
     print("context retrieved...")
-    llm = LLM(llm_type=question.llm_type, temperature=question.temperature)
+    # llm = LLM(llm_type=question.llm_type, temperature=question.temperature)
     print("llm initialized...")
     user_id: str = "user-" + str(uuid4())
     assistant_id: str = "llm-" + str(uuid4())
@@ -119,12 +144,14 @@ async def get_response(
         question.message_history,
         question.llm_type,
         question.temperature,
+        writer,
     )
     background_tasks.add_task(
         log_assistant_message,
         assistant_message,
         user_message.message_id,
         list(context["index"]),
+        writer,
     )
     print("returning...")
     return Response(
@@ -137,7 +164,11 @@ async def get_response(
 
 
 def log_user_message(
-    message: UserMessage, message_history: List[str], llm_type: str, temperature: float
+    message: UserMessage,
+    message_history: List[str],
+    llm_type: str,
+    temperature: float,
+    writer: GraphWriter,
 ) -> None:
     """
     Log a user message in the graph. If this is the first message, then also log the conversation and session.
@@ -153,7 +184,10 @@ def log_user_message(
 
 
 def log_assistant_message(
-    message: AssistantMessage, previous_message_id: str, context_ids: List[str]
+    message: AssistantMessage,
+    previous_message_id: str,
+    context_ids: List[str],
+    writer: GraphWriter,
 ) -> None:
     """
     Log an assistant message in the graph.
@@ -172,9 +206,3 @@ def get_prompt(context: List[str]) -> str:
     """
 
     return prompt_no_context_template if len(context) < 1 else prompt_template
-
-
-def write_notification(email: str, message=""):
-    with open("dummy_log.txt", mode="w") as email_file:
-        content = f"notification for {email}: {message}"
-        email_file.write(content)

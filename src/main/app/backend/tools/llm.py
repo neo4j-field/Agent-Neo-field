@@ -1,15 +1,12 @@
 import os
 from functools import cached_property
-from typing import List, Dict, Tuple
+from typing import Optional
 
 import openai
-from langchain_community.chat_models import AzureChatOpenAI
+from langchain_community.chat_models import AzureChatOpenAI, FakeListChatModel
 
-# from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai import ChatVertexAI
-from langchain_openai import OpenAI
 
-# from langchain.chains import ConversationChain
 import pandas as pd
 from pydantic import BaseModel, Field, field_validator, computed_field
 
@@ -34,7 +31,7 @@ class LLM(BaseModel):
 
     @field_validator("llm_type")
     def validate_llm_type(cls, v: str) -> str:
-        if v.lower() not in VALID_MODELS:
+        if v.lower() not in VALID_MODELS + ["fake"]:
             raise ValueError(
                 f"llm_type must be one of the following: {str(VALID_MODELS)}."
             )
@@ -42,7 +39,7 @@ class LLM(BaseModel):
 
     @computed_field
     @cached_property
-    def llm_instance(self) -> ChatVertexAI | AzureChatOpenAI:
+    def llm_instance(self) -> ChatVertexAI | AzureChatOpenAI | FakeListChatModel:
         return self._init_llm()
 
     def _init_llm(self):
@@ -53,6 +50,8 @@ class LLM(BaseModel):
         """
 
         match self.llm_type:
+            case "fake":
+                return FakeListChatModel(responses=["GDS is cool."])
             case "chat-bison 2k":
                 return ChatVertexAI(
                     model_name="chat-bison",
@@ -104,9 +103,7 @@ class LLM(BaseModel):
             case _:
                 raise ValueError("Please provide a valid LLM type.")
 
-    def _format_llm_input(
-        self, question: str, context: pd.DataFrame | None = None
-    ) -> str:
+    def _format_llm_input(self, question: str, context: Optional[pd.DataFrame] = None) -> str:
         """
         Format the LLM input and return the input along with the context IDs if they exist.
         """
@@ -123,7 +120,7 @@ class LLM(BaseModel):
         question: Question,
         user_id: str,
         assistant_id: str,
-        context: pd.DataFrame | None = None,
+        context: Optional[pd.DataFrame] = None,
     ) -> str:
         """
         Get a response from the LLM.

@@ -17,7 +17,7 @@ class Communicator:
     Base class for graph reader and writer.
     """
 
-    def __init__(self, secret_manager: Optional[SecretManager] = None) -> None:
+    def __init__(self, secret_manager: Optional[SecretManager]) -> None:
 
         if secret_manager is not None:
             print("Grabbing secrets from GCP.")
@@ -159,7 +159,7 @@ class GraphWriter(Communicator):
         message: AssistantMessage,
         previous_message_id: str,
         context_ids: List[str],
-    ):
+    ) -> None:
         """
         This method logs a new assistant message to the neo4j database and
         creates appropriate relationships.
