@@ -1,4 +1,4 @@
-from typing import List, Dict, Union
+from typing import List
 
 from pydantic import BaseModel
 
@@ -16,6 +16,8 @@ class Question(BaseModel):
     llm_type: str
     number_of_documents: int
     temperature: float
+    number_of_topics: int | None = 0
+    document_per_topic: int | None = 0
 
     def __init__(self, *a, **kw) -> None:
         super().__init__(*a, **kw)

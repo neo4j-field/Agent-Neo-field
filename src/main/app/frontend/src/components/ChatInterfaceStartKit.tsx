@@ -59,7 +59,7 @@ function ChatInterface() {
             } finally {
                 setIsSubmitting(false);
             }
-};
+            };
 
 
 

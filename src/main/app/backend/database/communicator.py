@@ -3,9 +3,6 @@ import time
 from typing import List, Optional
 
 import uuid
-
-# from graphdatascience import GraphDataScience
-
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
@@ -14,10 +11,10 @@ from neo4j.exceptions import ConstraintError
 import openai
 import pandas as pd
 
-from database import drivers
-from tools.secret_manager import SecretManager
-from objects.nodes import UserMessage, AssistantMessage
-from objects.rating import Rating
+from .drivers import init_driver
+from tools import SecretManager
+from objects import UserMessage, AssistantMessage
+from objects import Rating
 
 
 # PUBLIC = 'false'
@@ -26,7 +23,6 @@ from objects.rating import Rating
 # google_credentials = service_account.Credentials.from_service_account_info(
 #     sm.access_secret_version("google_service_account")
 # )
-
 
 
 class Communicator:
@@ -44,19 +40,20 @@ class Communicator:
     openai.api_version = sm.access_secret_version('openai_version')
 
     def __init__(self) -> None:
-
-        self.driver = drivers.init_driver(uri=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"), 
-                                          username=self.sm.access_secret_version("neo4j_username"), 
-                                          password=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_password"))
+        self.driver = init_driver(
+            uri=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"),
+            username=self.sm.access_secret_version("neo4j_username"),
+            password=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_password"))
         self.database_name = self.sm.access_secret_version("neo4j_database")
         self.project = os.getenv('GCP_PROJECT_ID')
         self.region = self.sm.access_secret_version('gcp_region')
+
 
 class GraphWriter(Communicator):
 
     def __init__(self) -> None:
         super().__init__()
-    
+
     def log_new_conversation(self, message: UserMessage, llm_type: str, temperature: float) -> None:
         """
         This method creates a new conversation node and logs the 
@@ -83,23 +80,24 @@ class GraphWriter(Communicator):
             merge (s:Session {id: $sessionId})
             on create set s.createTime = datetime()
             merge (s)-[:HAS_CONVERSATION]->(c)
-                      """,  sessionId=message.session_id, 
-                            convId=message.conversation_id, 
-                            messId=message.message_id, 
-                            llm=llm_type, 
-                            temperature=temperature,
-                            content=message.content, 
-                            embedding=message.embedding,
-                            role='user', 
-                            public=message.public)
+                      """, sessionId=message.session_id,
+                   convId=message.conversation_id,
+                   messId=message.message_id,
+                   llm=llm_type,
+                   temperature=temperature,
+                   content=message.content,
+                   embedding=message.embedding,
+                   role='user',
+                   public=message.public)
+
         try:
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(log)
-            
+
         except ConstraintError as err:
             print(err)
 
-            session.close() 
+            session.close()
 
     def log_user(self, message: UserMessage, previous_message_id: str) -> None:
         """
@@ -118,19 +116,19 @@ class GraphWriter(Communicator):
                 m.embedding = $embedding, m.public = toBoolean($public)
                    
             merge (pm)-[:NEXT]->(m)
-                      """,  prevMessId=previous_message_id, 
-                            messId=message.message_id, 
-                            content=message.content,
-                            embedding=message.content, 
-                            role='user',
-                            public=message.public)
+                      """, prevMessId=previous_message_id,
+                   messId=message.message_id,
+                   content=message.content,
+                   embedding=message.content,
+                   role='user',
+                   public=message.public)
 
         try:
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(log)
-            
+
         except ConstraintError as err:
-            print(err) 
+            print(err)
 
     def log_assistant(self, message: AssistantMessage, previous_message_id: str, context_ids: List[str]):
         """
@@ -163,22 +161,22 @@ class GraphWriter(Communicator):
 
             with m, d
             merge (m)-[:HAS_CONTEXT]->(d)
-                    """,    prevMessId=previous_message_id, 
-                            messId=message.message_id, 
-                            content=message.content, 
-                            role='assistant', 
-                            contextIndices=context_ids, 
-                            numDocs=message.number_of_documents, 
-                            prompt=message.prompt,
-                            resultingSummary=mem,
-                            public=message.public)
+                    """, prevMessId=previous_message_id,
+                   messId=message.message_id,
+                   content=message.content,
+                   role='assistant',
+                   contextIndices=context_ids,
+                   numDocs=message.number_of_documents,
+                   prompt=message.prompt,
+                   resultingSummary=mem,
+                   public=message.public)
 
         try:
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(log)
-            
+
         except ConstraintError as err:
-            print(err) 
+            print(err)
 
     def rate_message(self, rating: Rating):
         """
@@ -195,21 +193,22 @@ class GraphWriter(Communicator):
             set m.rating = $rating,
                 m.ratingMessage = $message
                     """, rating=rating.value, message=rating.message, messId=rating.message_id)
-                
+
         try:
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(rate)
-            
+
         except ConstraintError as err:
-            print(err) 
+            print(err)
 
 
 class GraphReader(Communicator):
 
     def __init__(self) -> None:
         super().__init__()
-        
-    def retrieve_context_documents(self, question_embedding: List[float], number_of_context_documents: int = 10) -> pd.DataFrame:
+
+    def retrieve_context_documents(self, question_embedding: List[float],
+                                   number_of_context_documents: int = 10) -> pd.DataFrame:
         '''
         This function takes the user question and creates an embedding of it
         using a vertexai model. 
@@ -218,38 +217,35 @@ class GraphReader(Communicator):
         the context. 
         The top n documents with their URLs are returned as context.
         '''
-        
+
         def neo4j_vector_index_search(tx):
             """
             This method runs vector similarity search on the document embeddings against the question embedding.
             """
 
-            return tx.run(  """
+            return tx.run("""
                             CALL db.index.vector.queryNodes('document-embeddings', toInteger($k), $questionEmbedding)
                             YIELD node AS vDocs, score
                             return vDocs.url as url, vDocs.text as text, vDocs.index as index
                             """, questionEmbedding=question_embedding, k=number_of_context_documents
-                        ).values()
-        
+                          ).values()
 
         # get documents from Neo4j database
         neo4j_timer_start = time.perf_counter()
         try:
             with self.driver.session(database=self.database_name) as session:
                 docs = session.execute_read(neo4j_vector_index_search)
-            
+
         except Exception as err:
-            print(err) 
+            print(err)
 
-                
-        print("Neo4j retrieval time: "+str(round(time.perf_counter()-neo4j_timer_start, 4))+" seconds.")
-
+        print("Neo4j retrieval time: " + str(round(time.perf_counter() - neo4j_timer_start, 4)) + " seconds.")
 
         return pd.DataFrame(docs, columns=["url", "text", "index"])
 
     def retrieve_context_documents_by_topic(self, question_embedding: List[float],
-                                   number_of_topics: int = 3,
-                                   documents_per_topic: int = 4) -> pd.DataFrame:
+                                            number_of_topics: int = 3,
+                                            documents_per_topic: int = 4) -> pd.DataFrame:
         '''
         This function takes the user question and creates an embedding of it
         using a vertexai model.
@@ -270,7 +266,8 @@ class GraphReader(Communicator):
                             MATCH (g)<-[:IN_GROUP]-()<-[h:HAS_TOPIC]-(vDocs)
                             WHERE h.rankAlpha50 <= toInteger($documents_per_topic)
                             return vDocs.url as url, vDocs.text as text, vDocs.index as index
-                            """, questionEmbedding=question_embedding, k=number_of_topics, docs_per_topic = documents_per_topic
+                            """, questionEmbedding=question_embedding, k=number_of_topics,
+                          docs_per_topic=documents_per_topic
                           ).values()
 
         # get documents from Neo4j database
@@ -285,4 +282,3 @@ class GraphReader(Communicator):
         print("Neo4j retrieval time: " + str(round(time.perf_counter() - neo4j_timer_start, 4)) + " seconds.")
 
         return pd.DataFrame(docs, columns=["url", "text", "index"])
-    

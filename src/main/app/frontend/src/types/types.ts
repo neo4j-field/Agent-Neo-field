@@ -7,13 +7,15 @@ export interface Settings {
   contextDocuments: number;
 }
 
+
 export interface AppContextType {
   settings: Settings;
   setSettings: React.Dispatch<React.SetStateAction<Settings>>;
-  toggleTheme: () => void;
   theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  graphData: GraphData | null;
+  setGraphData: React.Dispatch<React.SetStateAction<GraphData | null>>;
 }
-
 
 //todo: might need to refactor
 export interface Message {
@@ -41,4 +43,16 @@ export interface ApiResponse {
   conversation_id: string;
   content: string; // Ensure this property is included
   message_history?: string[]; // This is correctly optional
+}
+
+
+export interface DocumentNode {
+  url: string;
+  text: string;
+  index: number;
+}
+
+
+export interface GraphData {
+  nodes: DocumentNode[];
 }

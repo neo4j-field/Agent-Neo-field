@@ -1,5 +1,6 @@
 from neo4j import GraphDatabase
 
+
 def init_driver(uri, username, password):
     """
     Initiate the Neo4j Driver

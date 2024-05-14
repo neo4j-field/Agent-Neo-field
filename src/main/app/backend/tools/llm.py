@@ -11,7 +11,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from objects.question import Question
-from resources.prompts.prompts import prompt_no_context_template, prompt_template
+from resources.prompts import get_prompt_no_context_template, get_prompt_template
 
 from tools.secret_manager import SecretManager
 
