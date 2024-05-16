@@ -11,3 +11,4 @@ openai==1.13.3
 pandas==2.0.3
 pydantic==1.10.13
 uvicorn==0.25.0
+python-dotenv==1.0.1

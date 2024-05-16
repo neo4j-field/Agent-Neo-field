@@ -15,8 +15,10 @@ from resources.prompts import get_prompt_no_context_template, get_prompt_templat
 
 from tools.secret_manager import SecretManager
 
-sm = SecretManager()
-os.environ["LANGCHAIN_API_KEY"] = sm.access_secret_version("langsmith_api_key") 
+# Todo: I'm being lazy, flip this back when you go to production, this should probably be done in a test.
+sm = SecretManager(use_env=True,
+                   env_path='src/main/app/backend/.env')
+#os.environ["LANGCHAIN_API_KEY"] = sm.access_secret_version("LANGSMITH_API_KEY")
 
 class LLM(BaseModel):
     """

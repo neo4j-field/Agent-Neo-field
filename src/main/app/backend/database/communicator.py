@@ -17,13 +17,6 @@ from objects import UserMessage, AssistantMessage
 from objects import Rating
 
 
-# PUBLIC = 'false'
-
-# AUTHENTICATE SERVICE ACCOUNT  
-# google_credentials = service_account.Credentials.from_service_account_info(
-#     sm.access_secret_version("google_service_account")
-# )
-
 
 class Communicator:
     """
@@ -32,21 +25,23 @@ class Communicator:
     This class contains methods necessary to interact with the Neo4j database
     and manage conversations with the chosen LLM.
     """
-
-    sm = SecretManager()
+    # Todo: I'm being lazy, flip this back when you go to production, this should probably be done in a test.
+    sm = SecretManager(use_env=True,
+                       env_path='src/main/app/backend/.env')
 
     # AUTHENTICATE OPENAI
-    openai.api_key = sm.access_secret_version('openai_key')
-    openai.api_version = sm.access_secret_version('openai_version')
+    openai.api_key = sm.access_secret_version('OPENAI_API_KEY')
+    openai.api_version = sm.access_secret_version('OPENAI_API_VERSION')
 
     def __init__(self) -> None:
         self.driver = init_driver(
-            uri=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_uri"),
-            username=self.sm.access_secret_version("neo4j_username"),
-            password=self.sm.access_secret_version(f"neo4j_{os.environ.get('DATABASE_TYPE')}_password"))
-        self.database_name = self.sm.access_secret_version("neo4j_database")
-        self.project = os.getenv('GCP_PROJECT_ID')
-        self.region = self.sm.access_secret_version('gcp_region')
+            uri=self.sm.access_secret_version('NEO4J_URI'),
+            username=self.sm.access_secret_version('NEO4J_USERNAME'),
+            password=self.sm.access_secret_version('NEO4J_PASSWORD'))
+
+        self.database_name = self.sm.access_secret_version('NEO4J_DATABASE')
+        self.project = self.sm.access_secret_version('GCP_PROJECT_ID')
+        self.region = self.sm.access_secret_version('GCP_REGION')
 
 
 class GraphWriter(Communicator):
