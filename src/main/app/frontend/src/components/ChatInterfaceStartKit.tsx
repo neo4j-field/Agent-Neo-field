@@ -161,7 +161,6 @@ function ChatInterface() {
                   <Markdown remarkPlugins={[remarkGfm]}>{chat.text}</Markdown>
                   </div>
                   <div style={{ textAlign: 'right', verticalAlign: 'bottom', paddingTop: '12px' }}>
-                    <Typography variant='body-small'>{Date.now()}</Typography>
                   </div>
                 </Widget>
               </div>
