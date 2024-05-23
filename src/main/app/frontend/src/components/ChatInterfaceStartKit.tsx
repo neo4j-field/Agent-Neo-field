@@ -1,11 +1,10 @@
 import {Settings, Message, ApiRequestBody, ApiResponse} from '../types/types'; // Adjust the import path as needed
-import React, {Dispatch, useContext, useState} from 'react';
+import React, {useContext, useState} from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { AppContext } from '../App';
 import {Avatar, Button, TextInput, Typography, Widget} from "@neo4j-ndl/react";
 import ChatBotAvatar from './assets/chatbot-ai.png';
 import ChatBotUserAvatar from './assets/chatbot-user.png';
-import { fetchWithAuth } from '../api/api';  // Correctly import fetchWithAuth
 
 function ChatInterface() {
 
@@ -35,19 +34,21 @@ function ChatInterface() {
     };
 
     try {
-        const responseData: ApiResponse = await fetchWithAuth({
-            endpoint: '/llm',
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody)
-        });
-
-        setMessageHistory(prevHistory => responseData.message_history || prevHistory);
-        setIsResponseOk(true);
-        return responseData.content;
+        const response = await fetch(`${process.env.REACT_APP_BACKEND_ADDRESS}/llm`, {
+          method: 'POST',
+          headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+      });
+      const responseData: ApiResponse = await response.json();
+      if (!response.ok) {
+          throw new Error( "HTTP error: ${response.status}");
+      }
+      setMessageHistory(responseData.message_history || []);
+      setIsResponseOk(true);
+      return responseData.content;
     } catch (error) {
         console.error("API call failed:", error);
         setIsResponseOk(false);
