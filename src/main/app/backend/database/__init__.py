@@ -3,4 +3,3 @@ from .drivers import init_driver
 
 
 
-cd /path/to/Agent-Neo-field/src/main/app

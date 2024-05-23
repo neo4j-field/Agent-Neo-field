@@ -12,12 +12,9 @@ from pydantic import BaseModel
 
 from objects.question import Question
 from resources.prompts import get_prompt_no_context_template, get_prompt_template
+from tools.secret_manager import EnvSecretManager
 
-from tools.secret_manager import SecretManager
-
-# Todo: I'm being lazy, flip this back when you go to production, this should probably be done in a test.
-sm = SecretManager(use_env=True,
-                   env_path='src/main/app/backend/.env')
+sm = EnvSecretManager(env_path='.env')
 #os.environ["LANGCHAIN_API_KEY"] = sm.access_secret_version("LANGSMITH_API_KEY")
 
 class LLM(BaseModel):

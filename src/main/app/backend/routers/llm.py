@@ -12,12 +12,14 @@ from objects.nodes import UserMessage, AssistantMessage
 from resources.prompts import get_prompt_no_context_template, get_prompt_template
 from tools.embedding import TextEmbeddingService
 from tools.llm import LLM
+from tools.secret_manager import SecretManager,GoogleSecretManager,EnvSecretManager
 
 PUBLIC = True
 
+secret_manager = EnvSecretManager(env_path='.env')
 router = APIRouter()
-reader = GraphReader()
-writer = GraphWriter()
+reader = GraphReader(secret_manager)
+writer = GraphWriter(secret_manager)
 
 
 @router.post("/llm_dummy", response_model=Response)
@@ -25,7 +27,6 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     """
     Dummy test.
     """
-    print("dummy test")
     question_embedding = [0.321, 0.123]
     llm_response = "This call works!"
 

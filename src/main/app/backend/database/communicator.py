@@ -1,21 +1,21 @@
 import os
+import pandas as pd
 import time
 from typing import List, Optional
-
 import uuid
+
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts.prompt import PromptTemplate
+
 from neo4j.exceptions import ConstraintError
 import openai
-import pandas as pd
 
 from .drivers import init_driver
 from tools import SecretManager
 from objects import UserMessage, AssistantMessage
 from objects import Rating
-
 
 
 class Communicator:
@@ -25,15 +25,14 @@ class Communicator:
     This class contains methods necessary to interact with the Neo4j database
     and manage conversations with the chosen LLM.
     """
-    # Todo: I'm being lazy, flip this back when you go to production, this should probably be done in a test.
-    sm = SecretManager(use_env=True,
-                       env_path='src/main/app/backend/.env')
 
-    # AUTHENTICATE OPENAI
-    openai.api_key = sm.access_secret_version('OPENAI_API_KEY')
-    openai.api_version = sm.access_secret_version('OPENAI_API_VERSION')
+    def __init__(self, secret_manager: SecretManager) -> None:
+        self.sm = secret_manager
 
-    def __init__(self) -> None:
+        openai.api_key = self.sm.access_secret_version('OPENAI_API_KEY')
+        openai.api_version = self.sm.access_secret_version('OPENAI_API_VERSION')
+        print(self.sm.access_secret_version('NEO4J_URI'))
+
         self.driver = init_driver(
             uri=self.sm.access_secret_version('NEO4J_URI'),
             username=self.sm.access_secret_version('NEO4J_USERNAME'),
@@ -46,8 +45,8 @@ class Communicator:
 
 class GraphWriter(Communicator):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, secret_manager: SecretManager) -> None:
+        super().__init__(secret_manager)
 
     def log_new_conversation(self, message: UserMessage, llm_type: str, temperature: float) -> None:
         """
@@ -199,8 +198,8 @@ class GraphWriter(Communicator):
 
 class GraphReader(Communicator):
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, secret_manager: SecretManager) -> None:
+        super().__init__(secret_manager)
 
     def retrieve_context_documents(self, question_embedding: List[float],
                                    number_of_context_documents: int = 10) -> pd.DataFrame:
