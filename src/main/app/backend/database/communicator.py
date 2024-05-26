@@ -31,7 +31,6 @@ class Communicator:
 
         openai.api_key = self.sm.access_secret_version('OPENAI_API_KEY')
         openai.api_version = self.sm.access_secret_version('OPENAI_API_VERSION')
-        print(self.sm.access_secret_version('NEO4J_URI'))
 
         self.driver = init_driver(
             uri=self.sm.access_secret_version('NEO4J_URI'),
@@ -260,6 +259,38 @@ class GraphReader(Communicator):
                             MATCH (g)<-[:IN_GROUP]-()<-[h:HAS_TOPIC]-(vDocs)
                             WHERE h.rankAlpha50 <= toInteger($documents_per_topic)
                             return vDocs.url as url, vDocs.text as text, vDocs.index as index
+                            """, questionEmbedding=question_embedding, k=number_of_topics,
+                          docs_per_topic=documents_per_topic
+                          ).values()
+
+        # get documents from Neo4j database
+        neo4j_timer_start = time.perf_counter()
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                docs = session.execute_read(topical_neo4j_vector_index_search)
+
+        except Exception as err:
+            print(err)
+
+        print("Neo4j retrieval time: " + str(round(time.perf_counter() - neo4j_timer_start, 4)) + " seconds.")
+
+        return pd.DataFrame(docs, columns=["url", "text", "index"])
+
+    def retrieve_context_documents_by_topic_with_stem(self, question_embedding: List[float],
+                                                      number_of_topics: int = 3,
+                                                      documents_per_topic: int = 4) -> pd.DataFrame:
+
+        def topical_neo4j_vector_index_search(tx):
+            """
+            This method runs vector similarity search on the document embeddings against the question embedding.
+            """
+
+            return tx.run("""
+                            CALL db.index.vector.queryNodes('topic_group_summary_embeddings', toInteger($k), questionEmbedding)
+                            YIELD node AS d, score
+                            MATCH (d)-[:HAS_TOPIC]->(g:Groupable)<-[h:HAS_TOPIC]-(vDocs)
+                            OPTIONAL MATCH (d)-[:HAS_STEM]->(s:Stem)
+                            return vDocs.url as url, vDocs.text as text, vDocs.index as index, s.description
                             """, questionEmbedding=question_embedding, k=number_of_topics,
                           docs_per_topic=documents_per_topic
                           ).values()

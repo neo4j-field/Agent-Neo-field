@@ -3,6 +3,7 @@ from typing import List, Dict, Tuple
 
 import openai
 from langchain_community.chat_models import AzureChatOpenAI
+from langchain_core.messages import BaseMessage
 # from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai import ChatVertexAI
 from langchain_openai import OpenAI
@@ -11,7 +12,7 @@ import pandas as pd
 from pydantic import BaseModel
 
 from objects.question import Question
-from resources.prompts import get_prompt_no_context_template, get_prompt_template
+from resources.prompts import get_prompt_template, get_prompt_no_context_template
 from tools.secret_manager import EnvSecretManager
 
 sm = EnvSecretManager(env_path='.env')
@@ -91,12 +92,12 @@ class LLM(BaseModel):
 
         if context is not None:
             print("creating context prompt...")
-            return prompt_template.format(question=question, context=context[['url', 'text']].to_dict('records'))
+            return get_prompt_template(question=question, context=context[['url', 'text']].to_dict('records'))
         else:
             print("creating non-context prompt...")
-            return prompt_no_context_template.format(question=question)
+            return get_prompt_no_context_template(question=question)
                     
-    def get_response(self, question: Question, user_id: str, assistant_id: str, context: pd.DataFrame | None = None) -> str:
+    def get_response(self, question: Question, user_id: str, assistant_id: str, context: pd.DataFrame | None = None) -> BaseMessage:
         """
         Get a response from the LLM.
         """

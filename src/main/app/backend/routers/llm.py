@@ -65,9 +65,8 @@ async def get_response(question: Question, background_tasks: BackgroundTasks) ->
     context = reader.retrieve_context_documents(question_embedding=question_embedding,
                                                 number_of_context_documents=question.number_of_documents)
 
-    # TODO testing new graphRAG functionality, and directly returning the neo4j ResultSet to be binded by Neo4j NVL
     print("testing GraphRAG traversal")
-    graph_data = reader.retrieve_context_documents_by_topic(
+    graph_data = reader.retrieve_context_documents_by_topic_with_stem(
         question_embedding=question_embedding,
         number_of_topics=question.number_of_topics,
         documents_per_topic=question.document_per_topic
