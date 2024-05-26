@@ -14,7 +14,6 @@ def init_driver(uri: str, username: str, password: str) -> Driver:
     try:
         driver = GraphDatabase.driver(uri, auth=(username, password))
         driver.verify_connectivity()
-        print('Driver created and connectivity verified.')
         return driver
     except Exception as e:
         print(f"Failed to create Neo4j driver due to: {str(e)}")
