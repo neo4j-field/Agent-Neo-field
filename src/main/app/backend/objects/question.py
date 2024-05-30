@@ -1,6 +1,7 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
+from resources.valid_models import VALID_MODELS
 
 
 class Question(BaseModel):
@@ -8,28 +9,43 @@ class Question(BaseModel):
     Contains the user input from the frontend.
     """
 
-    session_id: str
-    conversation_id: str
-    question: str
-    conversation_history: str = ""
-    message_history: List[str] | None = []
-    llm_type: str
-    number_of_documents: int
-    temperature: float
-    number_of_topics: int | None = 0
-    document_per_topic: int | None = 0
+    session_id: str = Field(pattern=r"^s-.*", description="The session ID.")
+    conversation_id: str = Field(
+        pattern=r"^conv-.*", description="The conversation ID."
+    )
+    question: str = Field(description="The generated response message from the LLM.")
+    message_history: List[str] = Field(
+        default=[],
+        min_length=0,
+        description="A sequential list of the message ID history for a conversation.",
+    )
+    conversation_history: str = Field(
+        default="", description="A summary of the conversation so far."
+    )
+    llm_type: str = Field(description="The LLM to use for response generation.")
+    number_of_documents: int = Field(
+        default=10,
+        ge=0,
+        le=10,
+        description="The number of documents to use as context.",
+    )
+    temperature: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Temperature parameter for the LLM."
+    )
 
-    def __init__(self, *a, **kw) -> None:
-        super().__init__(*a, **kw)
+    @field_validator("message_history")
+    def validate_message_history(cls, v: List[str]) -> List[str]:
+        for i in range(len(v)):
+            if i % 2 == 0:
+                assert v[i].startswith("user-")
+            else:
+                assert v[i].startswith("llm-")
+        return v
 
-        self._assert_proper_ids()
-    
-    def _assert_proper_ids(self) -> None:
-        """
-        Validate the ID prefixes.
-        """
-
-        if not self.session_id.startswith("s-"):
-            raise ValueError("Invalid session_id prefix. Must start with s-")
-        if not self.conversation_id.startswith("conv-"):
-            raise ValueError("Invalid conversation_id prefix. Must start with conv-")
+    @field_validator("llm_type")
+    def validate_llm_type(cls, v: str) -> str:
+        if v.lower() not in VALID_MODELS:
+            raise ValueError(
+                f"llm_type must be one of the following: {str(VALID_MODELS)}."
+            )
+        return v.lower()

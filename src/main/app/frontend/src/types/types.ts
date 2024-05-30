@@ -17,7 +17,6 @@ export interface AppContextType {
   setGraphData: React.Dispatch<React.SetStateAction<GraphData | null>>;
 }
 
-//todo: might need to refactor
 export interface Message {
   id: number;
   text: string;
@@ -27,7 +26,13 @@ export interface Message {
 }
 
 
-//todo: might need to refactor
+export interface FetchOptions {
+  endpoint: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  headers?: { [key: string]: string };
+  body?: string;
+}
+
 export interface ApiRequestBody {
   session_id: string;
   conversation_id: string;
@@ -46,6 +51,7 @@ export interface ApiResponse {
 }
 
 
+
 export interface DocumentNode {
   url: string;
   text: string;
@@ -56,3 +62,4 @@ export interface DocumentNode {
 export interface GraphData {
   nodes: DocumentNode[];
 }
+

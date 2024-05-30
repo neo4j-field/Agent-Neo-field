@@ -1,91 +1,108 @@
 import os
-from typing import List, Dict, Tuple
+from functools import cached_property
+from typing import Optional
 
 import openai
-from langchain_community.chat_models import AzureChatOpenAI
-from langchain_core.messages import BaseMessage
-# from langchain_google_genai import ChatGoogleGenerativeAI
+
+from langchain_community.chat_models import AzureChatOpenAI, FakeListChatModel
 from langchain_google_vertexai import ChatVertexAI
-from langchain_openai import OpenAI
-# from langchain.chains import ConversationChain
+
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, computed_field
 
 from objects.question import Question
 from resources.prompts import get_prompt_template, get_prompt_no_context_template
 from tools.secret_manager import EnvSecretManager
+from resources.valid_models import get_valid_models
 
 sm = EnvSecretManager(env_path='.env')
-#os.environ["LANGCHAIN_API_KEY"] = sm.access_secret_version("LANGSMITH_API_KEY")
+
 
 class LLM(BaseModel):
     """
     Interface for interacting with different LLMs.
     """
 
-    llm_type: str
-    temperature: float = 0.7
-    llm_instance: ChatVertexAI | AzureChatOpenAI | None = None
+    llm_type: str = Field(description="The llm type to use in the conversation.")
+    temperature: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Temperature parameter for the LLM."
+    )
 
-    def __init__(self, *a, **kw) -> None:
-        super().__init__(*a, **kw)
+    @field_validator("llm_type")
+    def validate_llm_type(cls, v: str) -> str:
+        if v.lower() not in get_valid_models() + ["fake"]:
+            raise ValueError(
+                f"llm_type must be one of the following: {str(get_valid_models())}."
+            )
+        return v.lower()
 
-        self._init_llm(llm_type=self.llm_type, temperature=self.temperature)
-        
-    def _init_llm(self, llm_type: str, temperature: float):
+    @computed_field
+    @cached_property
+    def llm_instance(self) -> ChatVertexAI | AzureChatOpenAI | FakeListChatModel:
+        return self._init_llm()
+
+    def _init_llm(self):
         """
         This function initializes an LLM for conversation.
         Each time the LLM type is changed, the conversation is reinitialized
         and history is lost.
         """
 
-        match llm_type:
+        match self.llm_type:
+            case "fake":
+                return FakeListChatModel(responses=["GDS is cool."])
             case "chat-bison 2k":
-                self.llm_instance = ChatVertexAI(model_name='chat-bison',
-                        max_output_tokens=1024, # this is the max allowed
-                        temperature=temperature, # default temp is 0.0
-                        top_p=0.95, # default is 0.95
-                        top_k = 40 # default is 40
-                       )
+                return ChatVertexAI(
+                    model_name="chat-bison",
+                    max_output_tokens=1024,  # this is the max allowed
+                    temperature=self.temperature,  # default temp is 0.0
+                    top_p=0.95,  # default is 0.95
+                    top_k=40,  # default is 40
+                )
             case "chat-bison 32k":
-                self.llm_instance = ChatVertexAI(model_name='chat-bison-32k',
-                        max_output_tokens=8192, # this is the max allowed 
-                        temperature=temperature, # default temp is 0.0
-                        top_p=0.95, # default is 0.95
-                        top_k = 40 # default is 40
-                       )
-            case "Gemini":
-                self.llm_instance = ChatVertexAI(model_name="gemini-pro")
-            case "GPT-4 8k":
+                return ChatVertexAI(
+                    model_name="chat-bison-32k",
+                    max_output_tokens=8192,  # this is the max allowed
+                    temperature=self.temperature,  # default temp is 0.0
+                    top_p=0.95,  # default is 0.95
+                    top_k=40,  # default is 40
+                )
+            case "gemini":
+                return ChatVertexAI(model_name="gemini-pro")
+            case "gpt-4 8k":
                 # Tokens per Minute Rate Limit (thousands): 10
                 # Rate limit (Tokens per minute): 10000
                 # Rate limit (Requests per minute): 60
-                self.llm_instance = AzureChatOpenAI(openai_api_version=openai.api_version,
-                       openai_api_key = openai.api_key,
-                       openai_api_base = sm.access_secret_version('openai_endpoint'),
-                       deployment_name = sm.access_secret_version('gpt4_8k_name'),
-                       model_name = 'gpt-4',
-                       temperature=temperature) # default is 0.7
-                # self.llm_instance = OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
+                return AzureChatOpenAI(
+                    openai_api_version=openai.api_version,
+                    openai_api_key=openai.api_key,
+                    openai_api_base=sm.access_secret_version("openai_endpoint"),
+                    deployment_name=sm.access_secret_version("gpt4_8k_name"),
+                    model_name="gpt-4",
+                    temperature=self.temperature,
+                )  # default is 0.7
+                # return OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
                 #                            model="gpt-4",
                 #                            temperature=temperature)
-            case "GPT-4 32k":
+            case "gpt-4 32k":
                 # Tokens per Minute Rate Limit (thousands): 30
                 # Rate limit (Tokens per minute): 30000
                 # Rate limit (Requests per minute): 180
-                self.llm_instance = AzureChatOpenAI(openai_api_version=openai.api_version,
-                       openai_api_key = openai.api_key,
-                       openai_api_base = sm.access_secret_version('openai_endpoint'),
-                       deployment_name = sm.access_secret_version('gpt4_32k_name'),
-                       model_name = 'gpt-4-32k',
-                       temperature=temperature) # default is 0.7
-                # self.llm_instance = OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
+                return AzureChatOpenAI(
+                    openai_api_version=openai.api_version,
+                    openai_api_key=openai.api_key,
+                    openai_api_base=sm.access_secret_version("openai_endpoint"),
+                    deployment_name=sm.access_secret_version("gpt4_32k_name"),
+                    model_name="gpt-4-32k",
+                    temperature=self.temperature,
+                )  # default is 0.7
+                # return OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
                 #                            model="gpt-4-32k",
                 #                            temperature=temperature)
             case _:
                 raise ValueError("Please provide a valid LLM type.")
-    
-    def _format_llm_input(self, question: str, context: pd.DataFrame | None = None) -> str:
+
+    def _format_llm_input(self, question: str, context: Optional[pd.DataFrame] = None) -> str:
         """
         Format the LLM input and return the input along with the context IDs if they exist.
         """
@@ -97,7 +114,14 @@ class LLM(BaseModel):
             print("creating non-context prompt...")
             return get_prompt_no_context_template(question=question)
                     
-    def get_response(self, question: Question, user_id: str, assistant_id: str, context: pd.DataFrame | None = None) -> BaseMessage:
+
+    def get_response(
+        self,
+        question: Question,
+        user_id: str,
+        assistant_id: str,
+        context: Optional[pd.DataFrame] = None,
+    ) -> str:
         """
         Get a response from the LLM.
         """
@@ -106,10 +130,14 @@ class LLM(BaseModel):
 
         print("llm input: ", llm_input)
         # return self.llm_instance.predict(llm_input)
-        return self.llm_instance.invoke(llm_input, {"metadata": {"conversation_id": question.conversation_id, 
-                                                                 "session_id": question.session_id,
-                                                                 "user_id": user_id,
-                                                                 "assistant_id": assistant_id
-                                                                 }
-                                                    }
-                                        )
+        return self.llm_instance.invoke(
+            llm_input,
+            {
+                "metadata": {
+                    "conversation_id": question.conversation_id,
+                    "session_id": question.session_id,
+                    "user_id": user_id,
+                    "assistant_id": assistant_id,
+                }
+            },
+        )

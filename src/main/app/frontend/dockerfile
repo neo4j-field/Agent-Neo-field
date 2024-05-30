@@ -1,7 +1,12 @@
 FROM node:16-slim
 
 
-ENV REACT_APP_BACKEND_ADDRESS="https://agent-neo-backend-qaiojvs3da-uc.a.run.app"
+ENV REACT_APP_BACKEND_ADDRESS=https://agent-neo-backend-qaiojvs3da-uc.a.run.app
+ENV REACT_APP_AUTH_DOMAIN=dev-o8s8b52y.auth0.com
+ENV REACT_APP_AUTH_CALLBACK=https://agent-neo-react-fe-qaiojvs3da-uc.a.run.app/callback
+ENV REACT_APP_AUTH_LOGOUT_URL=http%3A%2F%2Flocalhost:3000
+ENV REACT_APP_AUTH_METHOD=auth0
+ENV REACT_APP_AUTH_CLIENT_ID=3OOrQh3TYyNOT8Y0AeE2tWek3wX0PAef
 
 
 WORKDIR /app

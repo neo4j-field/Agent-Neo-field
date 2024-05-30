@@ -5,6 +5,10 @@ import { AppContext } from '../App';
 import {Avatar, Button, TextInput, Typography, Widget} from "@neo4j-ndl/react";
 import ChatBotAvatar from './assets/chatbot-ai.png';
 import ChatBotUserAvatar from './assets/chatbot-user.png';
+import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
+import { fetchWithAuth } from '../api/api';  // Correctly import fetchWithAuth
 
 function ChatInterface() {
 
@@ -24,43 +28,37 @@ function ChatInterface() {
         setIsSubmitting(true);
 
         const requestBody: ApiRequestBody = {
-            session_id: sessionId,
-            conversation_id: conversationId,
-            question: inputText,
-            llm_type: settings.selectedLLM,
-            temperature: settings.temperature,
-            number_of_documents: settings.useGrounding ? settings.contextDocuments : 0,
-            message_history: messageHistory,
-        };
+        session_id: sessionId,
+        conversation_id: conversationId,
+        question: inputText,
+        llm_type: settings.selectedLLM,
+        temperature: settings.temperature,
+        number_of_documents: settings.useGrounding ? settings.contextDocuments : 0,
+        message_history: messageHistory,
+    };
 
-        try {
-            const response = await fetch(`${process.env.REACT_APP_BACKEND_ADDRESS}/llm`, {
-                method: 'POST',
-                headers: {
-                    'accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            });
+    try {
+        const responseData: ApiResponse = await fetchWithAuth({
+            endpoint: '/llm',
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestBody)
+        });
 
-            const responseData: ApiResponse = await response.json();
-
-            if (!response.ok) {
-                throw new Error( "HTTP error: ${response.status}");
-            }
-
-            setMessageHistory(responseData.message_history || []);
-            setIsResponseOk(true);
-            return responseData.content;
-            } catch (error) {
-                 setIsResponseOk(false);
-                 console.error("API call failed:", error);
-                 return "Sorry, something went wrong.";
-            } finally {
-                setIsSubmitting(false);
-            }
-            };
-
+        setMessageHistory(prevHistory => responseData.message_history || prevHistory);
+        setIsResponseOk(true);
+        return responseData.content;
+    } catch (error) {
+        console.error("API call failed:", error);
+        setIsResponseOk(false);
+        return "Sorry, something went wrong.";
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
 
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -158,10 +156,10 @@ function ChatInterface() {
                   }}
                 >
                   <div style={{ flexGrow: 1 }}>
-                  <Typography variant='body-medium'>{chat.text}</Typography>
+                  <Markdown remarkPlugins={[remarkGfm]}>{chat.text}</Markdown>
                   </div>
                   <div style={{ textAlign: 'right', verticalAlign: 'bottom', paddingTop: '12px' }}>
-                    <Typography variant='body-small'>2024-01-01 09:00:00</Typography>
+                    <Typography variant='body-small'>{Date.now()}</Typography>
                   </div>
                 </Widget>
               </div>

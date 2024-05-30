@@ -1,16 +1,38 @@
-import React, { createContext, useState } from 'react';
-import Sidebar from './components/SideBar';
-import ChatInterfaceStarterKit from './components/ChatInterfaceStartKit';
-import { NeedleThemeProvider, Logo, Typography, useMediaQuery } from '@neo4j-ndl/react';
+import React, { createContext, useEffect, useState } from 'react';
+import { useMediaQuery } from 'react-responsive'
+import {BrowserRouter as Router, Route, Routes} from 'react-router-dom'; // Use BrowserRouter and import Switch
+import Callback from "./auth/callback";
+import HomePage from "./HomePage"; // Make sure this path is correct
+import PrivateRoute from "./auth/privateRoute"; // Make sure this path is correct
+import { NeedleThemeProvider, Logo, Typography} from '@neo4j-ndl/react';
 import './tailwind.css';
 import '@neo4j-ndl/base/lib/neo4j-ds-styles.css';
 import { Settings, AppContextType, GraphData } from './types/types';
+import { getDynamicConfigValue } from './auth/dynamicConfig';
+import auth from './auth/auth';
 
 
 
+const defaultGraphData: GraphData = {
+  nodes: []
+};
 
-export const AppContext = createContext<AppContextType | null>(null);
 
+const defaultAppContextValue: AppContextType = {
+  settings: {
+    selectedLLM: 'GPT-4 8k',
+    temperature: 0.7,
+    useGrounding: true,
+    contextDocuments: 10,
+  },
+  setSettings: () => {},
+  toggleTheme: () => {},
+  theme: 'dark',
+  graphData: defaultGraphData,
+  setGraphData: () => {},
+};
+
+export const AppContext = createContext<AppContextType>(defaultAppContextValue);
 
 
 function App() {
@@ -22,29 +44,62 @@ function App() {
         contextDocuments: 10,
     });
 
-    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
+    const prefersDarkMode = useMediaQuery({query: "(prefers-color-scheme: dark)"});
     const [theme, setTheme] = useState<'light' | 'dark'>(prefersDarkMode ? 'dark' : 'light');
     const [graphData, setGraphData] = useState<GraphData | null>(null);
-
-
     const toggleTheme = () => setTheme((prevTheme) => (prevTheme === 'dark' ? 'light' : 'dark'));
+    const [appIsInitialized, setAppIsInitialized] = useState<boolean>(false);
 
+    useEffect(() => {
+        const initializeApp = async () => {
+            if(getDynamicConfigValue("REACT_APP_AUTH_METHOD") === "auth0") {
+                const pathname = window.location.pathname;
+                if(pathname === "/callback"){
+                    return;
+                }
 
+                try {
+                    localStorage.setItem("path", pathname);
+                    await auth.silentAuth();
+                    setAppIsInitialized(true);
+                } catch(err: unknown) {
+                    const error = err as { message?: string, error?: string }; // Type assertion
+                    if(error.error === "login_required" || error.message === "login_required") {
+                        auth.login();
+                    }
+                    else {
+                        console.error('Authentication error: ', error);
+                        alert('An unknown error occurred. Please check the console for details.');
+                    }
+                }
+            }
+        };
 
+        initializeApp().catch(error => {
+            console.error("Failed to initialize app:", error);
+        });
+
+    }, []);
+
+    //console.log(`window.location.pathname: ${window.location.pathname}`);
     return (
         <NeedleThemeProvider theme={theme} wrapperProps={{ isWrappingChildren: false }}>
-            <AppContext.Provider value={{ settings, setSettings, toggleTheme, theme, graphData, setGraphData }}>
-                <div className={`flex ${theme === 'dark' ? 'ndl-theme-dark' : 'ndl-theme-light'} n-bg-palette-neutral-bg-weak`}>
-                    <Sidebar />
-                    <div className="flex w-full flex-col justify-center items-center">
-                        <section className="flex justify-center items-center p-4">
-                            <Logo color="white" type="full" className="h-8 min-h-12 min-w-32" />
-                            <Typography variant="h2" className="ml-4">Agent-Neo</Typography>
-                        </section>
-                        <ChatInterfaceStarterKit />
-                    </div>
-                </div>
+            <AppContext.Provider value={{ settings, setSettings, toggleTheme, theme,graphData, setGraphData }}>
+                <Router>
+                    <Routes>
+                        <Route path="/callback" element={<Callback />} />
+                        <Route path="/" element={
+                            <PrivateRoute
+                                appIsInitialized={appIsInitialized}
+                                element={<HomePage />}
+                            />
+                        } />
+                    </Routes>
+                </Router>
             </AppContext.Provider>
         </NeedleThemeProvider>
     );
 }
+
+
+export default App

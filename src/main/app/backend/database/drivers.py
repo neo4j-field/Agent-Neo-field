@@ -1,6 +1,5 @@
 from neo4j import GraphDatabase
 from neo4j import Driver
-from typing import Any
 
 
 def init_driver(uri: str, username: str, password: str) -> Driver:
@@ -18,3 +17,4 @@ def init_driver(uri: str, username: str, password: str) -> Driver:
     except Exception as e:
         print(f"Failed to create Neo4j driver due to: {str(e)}")
         raise
+
