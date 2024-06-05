@@ -11,7 +11,7 @@ from neo4j.exceptions import ConstraintError
 import openai
 
 from .drivers import init_driver
-from tools import SecretManager
+from tools import SecretManager, timeit
 from objects import UserMessage, AssistantMessage
 from objects import Rating
 
@@ -46,7 +46,6 @@ class Communicator:
 
 class GraphWriter(Communicator):
 
-    #todo: optional type for secret manager?
     def __init__(self, secret_manager: SecretManager) -> None:
         super().__init__(secret_manager)
 
@@ -81,15 +80,15 @@ class GraphWriter(Communicator):
             merge (s:Session {id: $sessionId})
             on create set s.createTime = datetime()
             merge (s)-[:HAS_CONVERSATION]->(c)""",
-                   sessionId=message.session_id,
-                   convId=message.conversation_id,
-                   messId=message.message_id,
-                   llm=llm_type,
-                   temperature=temperature,
-                   content=message.content,
-                   embedding=message.embedding,
-                   role='user',
-                   public=message.public)
+                sessionId=message.session_id,
+                convId=message.conversation_id,
+                messId=message.message_id,
+                llm=llm_type,
+                temperature=temperature,
+                content=message.content,
+                embedding=message.embedding,
+                role='user',
+                public=message.public)
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -109,7 +108,7 @@ class GraphWriter(Communicator):
 
         def log(tx):
             tx.run(
-            """
+                """
             match (pm:Message {id: $prevMessId})
             merge (m:Message {id: $messId})
             set m.content = $content,
@@ -129,7 +128,6 @@ class GraphWriter(Communicator):
                 public=message.public,
             )
 
-
         try:
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(log)
@@ -139,13 +137,11 @@ class GraphWriter(Communicator):
             print(err)
             session.close()
 
-
-
     def log_assistant(
-        self,
-        message: AssistantMessage,
-        previous_message_id: str,
-        context_ids: List[str],
+            self,
+            message: AssistantMessage,
+            previous_message_id: str,
+            context_ids: List[str],
     ) -> None:
         """
         This method logs a new assistant message to the neo4j database and
@@ -179,16 +175,15 @@ class GraphWriter(Communicator):
 
             WITH m, d
             MERGE (m)-[:HAS_CONTEXT]->(d)""",
-                   prevMessId=previous_message_id,
-                   messId=message.message_id,
-                   content=message.content,
-                   role='assistant',
-                   contextIndices=context_ids,
-                   numDocs=message.number_of_documents,
-                   prompt=message.prompt,
-                   resultingSummary=mem,
-                   public=message.public)
-
+                prevMessId=previous_message_id,
+                messId=message.message_id,
+                content=message.content,
+                role='assistant',
+                contextIndices=context_ids,
+                numDocs=message.number_of_documents,
+                prompt=message.prompt,
+                resultingSummary=mem,
+                public=message.public)
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -197,7 +192,6 @@ class GraphWriter(Communicator):
         except ConstraintError as err:
             print(err)
             session.close()
-
 
     def rate_message(self, rating: Rating):
         """
@@ -312,6 +306,7 @@ class GraphReader(Communicator):
 
         '''
 
+        @timeit
         def neo4j_vector_index_search(tx):
             """
             This method runs vector similarity search on the document embeddings against the question embedding.
@@ -323,9 +318,6 @@ class GraphReader(Communicator):
                             """, questionEmbedding=question_embedding, k=number_of_context_documents
                           ).values()
 
-
-        # get documents from Neo4j database
-        neo4j_timer_start = time.perf_counter()
         try:
             with self.driver.session(database=self.database_name) as session:
                 docs = session.execute_read(neo4j_vector_index_search)
@@ -333,11 +325,7 @@ class GraphReader(Communicator):
         except Exception as err:
             print(err)
 
-        print("Neo4j retrieval time: " + str(round(time.perf_counter() - neo4j_timer_start, 4)) + " seconds.")
-
         return pd.DataFrame(docs, columns=["url", "text", "index"])
-
-
 
     def retrieve_context_documents_by_topic(self,
                                             question_embedding: List[float],
@@ -353,6 +341,7 @@ class GraphReader(Communicator):
         The top n documents with their URLs are returned as context.
         """
 
+        @timeit
         def topical_neo4j_vector_index_search(tx):
             """
             This method runs vector similarity search on the document embeddings against the question embedding.
@@ -371,8 +360,6 @@ class GraphReader(Communicator):
                 documents_per_topic=documents_per_topic,
             ).values()
 
-        # get documents from Neo4j database
-        neo4j_timer_start = time.perf_counter()
         try:
             with self.driver.session(database=self.database_name) as session:
                 docs = session.execute_read(topical_neo4j_vector_index_search)
@@ -381,20 +368,44 @@ class GraphReader(Communicator):
             print(err)
             session.close()
 
-        print(
-            "Neo4j retrieval time: "
-            + str(round(time.perf_counter() - neo4j_timer_start, 4))
-            + " seconds."
-        )
-
         return pd.DataFrame(docs, columns=["url", "text", "index"])
 
+    @timeit
+    def retrieve_conversation_history(self, conversation_id: str) -> pd.DataFrame:
+
+        def retrieve_conversation(tx):
+            return tx.run(
+                """
+            MATCH (c:Conversation {id: $conversation_id})
+            WITH c
+            MATCH (c) - [:FIRST] -> (startMessage:Message)
+            WITH c, startMessage
+            MATCH messagePath = (c)-[:FIRST]-(startMessage)
+                ((question:Message)-[:NEXT]->(response)){1,25}
+            WITH messagePath, startMessage, response
+            UNWIND response as resp
+            MATCH documentPath = (resp)-[:HAS_CONTEXT]->(:Document)
+            WITH messagePath, documentPath
+            RETURN documentPath, messagePath as documentPaths
+            LIMIT 50"""
+                , conversation_id=conversation_id).values()
+
+        try:
+            with self.driver.session(database=self.database_name) as session:
+                docs = session.execute_read(retrieve_conversation)
+
+        except Exception as err:
+            print(err)
+            session.close()
+
+        return pd.DataFrame(docs, columns=["url", "text", "index"])
 
     def match_by_id(self, ids: List[str]) -> int:
         """
         Match nodes based on provided ids and return count.
         """
 
+        @timeit
         def match_nodes(tx):
             return (
                 tx.run(
@@ -409,6 +420,7 @@ class GraphReader(Communicator):
                 .value()
             )
 
+        @timeit
         def match_document_nodes(tx):
             return (
                 tx.run(
