@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import time
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import uuid
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
@@ -367,12 +367,16 @@ class GraphReader(Communicator):
         except Exception as err:
             print(err)
             session.close()
-
         return pd.DataFrame(docs, columns=["url", "text", "index"])
 
-    @timeit
-    def retrieve_conversation_history(self, conversation_id: str) -> pd.DataFrame:
+    def retrieve_conversation_history(self, conversation_id: str) -> List[Tuple[Tuple[List, List], Tuple[List, List]]]:
+        """
+        This function grabs the entire conversation history and the referenced document chunks.
+        :param conversation_id:
+        :return:
+        """
 
+        @timeit
         def retrieve_conversation(tx):
             return tx.run(
                 """
@@ -392,13 +396,30 @@ class GraphReader(Communicator):
 
         try:
             with self.driver.session(database=self.database_name) as session:
-                docs = session.execute_read(retrieve_conversation)
+                conversation_records = session.execute_read(retrieve_conversation)
 
         except Exception as err:
             print(err)
             session.close()
 
-        return pd.DataFrame(docs, columns=["url", "text", "index"])
+        data = []
+        for record in conversation_records:
+            document_path = record[0]
+            message_path = record[1]
+
+            document_nodes = [document_node for document_node in document_path.node]
+            document_relationship = [document_relationship for document_relationship in document_path.relationship]
+
+            documents = (document_nodes, document_relationship)
+
+            message_nodes = [message_node for message_node in message_path.node]
+            message_relationships = [message_relationship for message_relationship in message_path.relationship]
+
+            messages = (message_nodes, message_relationships)
+
+            data.append((documents, messages))
+
+        return data
 
     def match_by_id(self, ids: List[str]) -> int:
         """
