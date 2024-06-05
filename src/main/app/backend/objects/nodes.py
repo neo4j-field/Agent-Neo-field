@@ -29,7 +29,6 @@ class UserMessage(BaseModel):
         description="Whether the question is from the public facing app or not."
     )
 
-
     @field_validator("message_id")
     def validate_message_id(cls, v: str) -> str:
         if not v.startswith("user-"):
@@ -42,7 +41,6 @@ class UserMessage(BaseModel):
     def validate_role(cls, v: str) -> str:
         assert v == "user", "role must equal 'user'."
         return v
-
 
 
 class AssistantMessage(BaseModel):
@@ -119,11 +117,54 @@ class Conversation(BaseModel):
         return v.lower()
 
 
-
-
 class Session(BaseModel):
     """
     Contains session information.
     """
-
     session_id: str = Field(pattern=r"^s-.*", description="The session ID.")
+
+
+class DocumentNode(BaseModel):
+    """
+    Contains document (node) information.
+    """
+    community: int = Field(description="community the node belongs too")
+    contextCount: int = Field("context count")
+    embedding: list[float] = Field(description="text embedding")
+    fast_rp_similarity: list[float] = Field(description="fast-rp similarity")
+    index: int = Field(description="index")
+    pageRank: float = Field(description="page rank score")
+    text: str = Field(description="text chunk")
+    url: str = Field(description="url")
+
+
+class DocumentRelationship(BaseModel):
+    start_node: DocumentNode = Field(description="start document node in relationship")
+    end_node: DocumentNode = Field(description="end document node in relationship")
+
+
+class MessageNode(BaseModel):
+    """
+    Contains Message (node) information.
+    """
+    content: str = Field(description="message content")
+    id: str = Field(description="message id")
+    post_time: str = Field(description="post time")  # todo refactor this to a temporal type in the database
+    role: str = Field(description="user")
+
+
+class MessageRelationship(BaseModel):
+    start_node: MessageNode = Field(description="start message node in relationship")
+    end_node: MessageNode = Field(description="end message node in relationship")
+
+
+class ConversationEntry(BaseModel):
+    """
+    Contains the conversation entry information. a conversation entry is both the question/response sequence and the referenced RAG documents.
+    """
+    document_nodes: List[DocumentNode]
+    message_nodes: List[MessageNode]
+    document_relationships: List[DocumentRelationship]
+    message_relationships: List[MessageRelationship]
+
+

@@ -16,3 +16,12 @@ def get_prompt_no_context_template(question: str) -> str:
         2. Use your knowledge to answer the user question.
         3. Return your answer with sources if possible.
     """
+
+
+def get_prompt_no_context() -> str:
+    return f"""
+        Follow these steps exactly:
+        1. Read this question as an experienced graph data scientist at Neo4j:
+        2. Use your knowledge to answer the user question.
+        3. Return your answer with sources if possible.
+    """

@@ -1,13 +1,13 @@
-import os
 from typing import List
 from uuid import uuid4
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from database.communicator import GraphWriter, GraphReader
 from objects.question import Question
-from objects.response import Response
-from objects.nodes import UserMessage, AssistantMessage
-from resources.prompts import get_prompt_no_context_template, get_prompt_template
+from objects.response import Response, GraphResponse
+from objects.nodes import (UserMessage, AssistantMessage, ConversationEntry, MessageNode, DocumentNode,
+                           DocumentRelationship,MessageRelationship)
+from resources.prompts import get_prompt_no_context_template, get_prompt_template, get_prompt_no_context
 from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol
 from tools.llm import LLM
 from tools.secret_manager import SecretManager, GoogleSecretManager, EnvSecretManager
@@ -16,6 +16,14 @@ PUBLIC = True
 
 secret_manager = EnvSecretManager(env_path='.env')
 router = APIRouter()
+
+
+
+def get_prompt(context: List[str]) -> str:
+    """
+    Determine the prompt used for LLM query.
+    """
+    return get_prompt_no_context_template() if len(context) < 1 else get_prompt_template()
 
 
 def get_reader():
@@ -42,6 +50,7 @@ def get_llm(question: Question) -> LLM:
     return LLM(llm_type=question.llm_type, temperature=question.temperature)
 
 
+
 @router.get("/")
 def get_default() -> str:
     return "Agent Neo backend is live."
@@ -56,6 +65,7 @@ async def get_response(question: Question) -> Response:
     """
     question_embedding = [0.321, 0.123]
     llm_response = "This call works!"
+    no_context_prompt = get_prompt_no_context()
 
     user_message = UserMessage(
         session_id=question.session_id,
@@ -65,10 +75,11 @@ async def get_response(question: Question) -> Response:
         public=PUBLIC,
     )
 
+
     assistant_message = AssistantMessage(
         session_id=question.session_id,
         conversation_id=question.conversation_id,
-        prompt=prompt_no_context_template,
+        prompt=no_context_prompt,
         content=llm_response,
         public=PUBLIC,
         vectorIndexSearch=True,
@@ -185,8 +196,48 @@ def log_assistant_message(
     )
 
 
-def get_prompt(context: List[str]) -> str:
+@router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
+async def get_graph_response(conversation_id: str,
+                             reader: GraphReader = Depends(get_reader)):
     """
-    Determine the prompt used for LLM query.
+    Endpoint to fetch detailed graph data and conversation history for a given conversation ID.
     """
-    return get_prompt_no_context_template() if len(context) < 1 else get_prompt_template()
+    try:
+        history_data = reader.retrieve_conversation_history(conversation_id)
+        if not history_data:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+    conversation_entries = []
+
+    for record in history_data:
+        document_data, message_data = record
+
+        # Unpacking document nodes and relationships
+        document_nodes = [DocumentNode(**doc_node) for doc_node in document_data[0]]
+        document_relationships = [
+            DocumentRelationship(
+                start_node=DocumentNode(**rel['start_node']),
+                end_node=DocumentNode(**rel['end_node'])
+            ) for rel in document_data[1]
+        ]
+
+        # Unpacking message nodes and relationships
+        message_nodes = [MessageNode(**msg_node) for msg_node in message_data[0]]
+        message_relationships = [
+            MessageRelationship(
+                start_node=MessageNode(**rel['start_node']),
+                end_node=MessageNode(**rel['end_node'])
+            ) for rel in message_data[1]
+        ]
+
+        # Adding to conversation entries
+        conversation_entries.append(ConversationEntry(
+            document_nodes=document_nodes,
+            message_nodes=message_nodes,
+            document_relationships=document_relationships,
+            message_relationships=message_relationships
+        ))
+
+    return GraphResponse(conversation_entries=conversation_entries)
+
+
