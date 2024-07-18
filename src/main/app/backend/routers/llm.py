@@ -5,8 +5,8 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from database.communicator import GraphWriter, GraphReader
 from objects.question import Question
 from objects.response import Response, GraphResponse
-from objects.nodes import (UserMessage, AssistantMessage, ConversationEntry, MessageNode, DocumentNode,
-                           DocumentRelationship,MessageRelationship)
+from objects.graphtypes import (UserMessage, AssistantMessage, ConversationEntry, MessageNode, DocumentNode,
+                                DocumentRelationship, MessageRelationship)
 from resources.prompts import get_prompt_no_context_template, get_prompt_template, get_prompt_no_context
 from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol
 from tools.llm import LLM
@@ -16,7 +16,6 @@ PUBLIC = True
 
 secret_manager = EnvSecretManager(env_path='.env')
 router = APIRouter()
-
 
 
 def get_prompt(context: List[str]) -> str:
@@ -50,7 +49,6 @@ def get_llm(question: Question) -> LLM:
     return LLM(llm_type=question.llm_type, temperature=question.temperature)
 
 
-
 @router.get("/")
 def get_default() -> str:
     return "Agent Neo backend is live."
@@ -74,7 +72,6 @@ async def get_response(question: Question) -> Response:
         embedding=question_embedding,
         public=PUBLIC,
     )
-
 
     assistant_message = AssistantMessage(
         session_id=question.session_id,
@@ -197,47 +194,79 @@ def log_assistant_message(
 
 
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
-async def get_graph_response(conversation_id: str,
-                             reader: GraphReader = Depends(get_reader)):
+async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)):
     """
     Endpoint to fetch detailed graph data and conversation history for a given conversation ID.
     """
     try:
         history_data = reader.retrieve_conversation_history(conversation_id)
+
         if not history_data:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
-    conversation_entries = []
+        conversation_entries = []
 
-    for record in history_data:
-        document_data, message_data = record
+        for messages, documents in history_data:
+            message_nodes, message_rels = messages
+            document_nodes, document_rels = documents
 
-        # Unpacking document nodes and relationships
-        document_nodes = [DocumentNode(**doc_node) for doc_node in document_data[0]]
-        document_relationships = [
-            DocumentRelationship(
-                start_node=DocumentNode(**rel['start_node']),
-                end_node=DocumentNode(**rel['end_node'])
-            ) for rel in document_data[1]
-        ]
+            entry = ConversationEntry(
+                document_nodes=[create_document_node(doc) for doc in document_nodes],
+                message_nodes=[create_message_node(msg) for msg in message_nodes],
+                document_relationships=[create_document_relationship(rel) for rel in document_rels],
+                message_relationships=[create_message_relationship(rel) for rel in message_rels]
+            )
 
-        # Unpacking message nodes and relationships
-        message_nodes = [MessageNode(**msg_node) for msg_node in message_data[0]]
-        message_relationships = [
-            MessageRelationship(
-                start_node=MessageNode(**rel['start_node']),
-                end_node=MessageNode(**rel['end_node'])
-            ) for rel in message_data[1]
-        ]
+            conversation_entries.append(entry)
 
-        # Adding to conversation entries
-        conversation_entries.append(ConversationEntry(
-            document_nodes=document_nodes,
-            message_nodes=message_nodes,
-            document_relationships=document_relationships,
-            message_relationships=message_relationships
-        ))
+        return GraphResponse(conversation_entries=conversation_entries)
 
-    return GraphResponse(conversation_entries=conversation_entries)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
+def create_document_node(data: dict) -> DocumentNode:
+    required_fields = ["community", "contextCount", "embedding", "fast_rp_similarity", "index", "pageRank", "text",
+                       "url"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return DocumentNode(**data)
+
+
+def create_message_node(data: dict) -> MessageNode:
+    required_fields = ["id", "content", "role", "postTime"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return MessageNode(**data)
+
+
+def create_document_relationship(data: dict) -> DocumentRelationship:
+    required_fields = ["start_node", "end_node"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return DocumentRelationship(
+        start_node=create_document_node(data['start_node']),
+        end_node=create_document_node(data['end_node'])
+    )
+
+
+def create_message_relationship(data: dict) -> MessageRelationship:
+    required_fields = ["start_node", "end_node"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return MessageRelationship(
+        start_node=create_message_node(data['start_node']),
+        end_node=create_message_node(data['end_node'])
+    )

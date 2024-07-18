@@ -397,28 +397,55 @@ class GraphReader(Communicator):
         try:
             with self.driver.session(database=self.database_name) as session:
                 conversation_records = session.execute_read(retrieve_conversation)
+                print(f'Conversation records type: {type(conversation_records)}')
+                if conversation_records:
+                    print(f'First conversation record: {conversation_records[0]}')
+                else:
+                    print('No conversation records found.')
 
         except Exception as err:
-            print(err)
+            print(f'Error retrieving conversation records: {err}')
             session.close()
+            raise
 
         data = []
-        for record in conversation_records:
+        for idx, record in enumerate(conversation_records):
+            print(f'\nProcessing record {idx + 1}/{len(conversation_records)}')
+
             document_path = record[0]
             message_path = record[1]
 
-            document_nodes = [document_node for document_node in document_path.node]
-            document_relationship = [document_relationship for document_relationship in document_path.relationship]
+            print(
+                f'Document path type: {type(document_path)}, length: {len(document_path.nodes)} nodes, {len(document_path.relationships)} relationships')
+            if document_path.nodes:
+                first_doc_node = document_path.nodes[0]
+                print(f'First document node properties: {dict(first_doc_node)}')
+            if document_path.relationships:
+                first_doc_rel = document_path.relationships[0]
+                print(f'First document relationship type: {type(first_doc_rel)}')
 
-            documents = (document_nodes, document_relationship)
+            document_nodes = [document_node for document_node in document_path.nodes]
+            document_relationships = [document_relationship for document_relationship in document_path.relationships]
 
-            message_nodes = [message_node for message_node in message_path.node]
-            message_relationships = [message_relationship for message_relationship in message_path.relationship]
+            documents = (document_nodes, document_relationships)
+
+            print(
+                f'Message path type: {type(message_path)}, length: {len(message_path.nodes)} nodes, {len(message_path.relationships)} relationships')
+            if message_path.nodes:
+                first_msg_node = message_path.nodes[0]
+                print(f'First message node properties: {dict(first_msg_node)}')
+            if message_path.relationships:
+                first_msg_rel = message_path.relationships[0]
+                print(f'First message relationship type: {type(first_msg_rel)}')
+
+            message_nodes = [message_node for message_node in message_path.nodes]
+            message_relationships = [message_relationship for message_relationship in message_path.relationships]
 
             messages = (message_nodes, message_relationships)
 
             data.append((documents, messages))
 
+        print(f'\nParsed data summary: {[(len(d[0]), len(d[1]), len(m[0]), len(m[1])) for d, m in data]}')
         return data
 
     def match_by_id(self, ids: List[str]) -> int:

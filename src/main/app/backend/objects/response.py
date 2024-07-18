@@ -1,6 +1,7 @@
 from typing import List
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
+from .graphtypes import DocumentNode, MessageNode
 
 
 class Response(BaseModel):
@@ -18,7 +19,7 @@ class Response(BaseModel):
         description="A sequential list of the message ID history for a conversation.",
     )
 
-    @field_validator("message_history")
+    @validator('message_history')
     def validate_message_history(cls, v: List[str]) -> List[str]:
         for i in range(len(v)):
             if i % 2 == 0:
@@ -26,11 +27,6 @@ class Response(BaseModel):
             else:
                 assert v[i].startswith("llm-")
         return v
-
-class ConversationEntry(BaseModel):
-    documents: List[DocumentNode]
-    messages: List[MessageNode]
-
 
 
 class GraphResponse(BaseModel):
@@ -47,7 +43,3 @@ class GraphResponse(BaseModel):
         min_length=2,
         description="A sequential list of the message ID history for a conversation.",
     )
-
-
-
-

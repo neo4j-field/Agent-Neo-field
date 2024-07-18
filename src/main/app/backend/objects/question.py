@@ -1,6 +1,6 @@
 from typing import List
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 from resources.valid_models import VALID_MODELS
 
 
@@ -33,7 +33,7 @@ class Question(BaseModel):
         default=0.0, ge=0.0, le=1.0, description="Temperature parameter for the LLM."
     )
 
-    @field_validator("message_history")
+    @validator('message_history')
     def validate_message_history(cls, v: List[str]) -> List[str]:
         for i in range(len(v)):
             if i % 2 == 0:
@@ -42,7 +42,7 @@ class Question(BaseModel):
                 assert v[i].startswith("llm-")
         return v
 
-    @field_validator("llm_type")
+    @validator('llm_type')
     def validate_llm_type(cls, v: str) -> str:
         if v.lower() not in VALID_MODELS:
             raise ValueError(

@@ -1,6 +1,6 @@
 import unittest
 
-from objects.nodes import Session
+from objects.graphtypes import Session
 
 
 class TestSession(unittest.TestCase):

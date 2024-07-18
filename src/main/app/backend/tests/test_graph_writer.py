@@ -7,7 +7,7 @@ from neo4j import Driver
 
 
 from database.communicator import GraphWriter, GraphReader
-from objects.nodes import UserMessage, AssistantMessage
+from objects.graphtypes import UserMessage, AssistantMessage
 from objects.rating import Rating
 from resources.prompts.prompts import prompt_template
 from tools.secret_manager import SecretManager

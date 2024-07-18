@@ -1,6 +1,6 @@
 import unittest
 
-from objects.nodes import AssistantMessage
+from objects.graphtypes import AssistantMessage
 from resources.prompts.prompts import prompt_no_context_template, prompt_template
 
 

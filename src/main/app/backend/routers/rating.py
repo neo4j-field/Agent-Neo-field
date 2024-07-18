@@ -2,18 +2,12 @@ from fastapi import APIRouter, Depends
 
 from database.communicator import GraphWriter
 from objects.rating import Rating
-<<<<<<< HEAD
 from tools.secret_manager import SecretManager,GoogleSecretManager,EnvSecretManager
 
 secret_manager = EnvSecretManager(env_path='.env')
 router = APIRouter()
 writer = GraphWriter(secret_manager)
-=======
-from tools.secret_manager import SecretManager
 
-sm = SecretManager()
-router = APIRouter()
-# writer = GraphWriter(secret_manager=sm)
 
 
 def get_writer():
@@ -22,7 +16,6 @@ def get_writer():
         yield writer
     finally:
         writer.close_driver()
->>>>>>> origin/master
 
 
 @router.post("/rating")

@@ -1,6 +1,6 @@
 import unittest
 
-from objects.nodes import UserMessage
+from objects.graphtypes import UserMessage
 
 
 class TestUserMessage(unittest.TestCase):

@@ -1,9 +1,9 @@
+from datetime import datetime
 from typing import List
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
-from resources.prompts import get_prompt_no_context_template, get_prompt_template
 from resources.valid_models import VALID_MODELS
 
 
@@ -29,7 +29,7 @@ class UserMessage(BaseModel):
         description="Whether the question is from the public facing app or not."
     )
 
-    @field_validator("message_id")
+    @validator('message_id')
     def validate_message_id(cls, v: str) -> str:
         if not v.startswith("user-"):
             raise ValueError(
@@ -37,7 +37,7 @@ class UserMessage(BaseModel):
             )
         return v
 
-    @field_validator("role")
+    @validator('role')
     def validate_role(cls, v: str) -> str:
         assert v == "user", "role must equal 'user'."
         return v
@@ -79,7 +79,7 @@ class AssistantMessage(BaseModel):
         default=0.0, ge=0.0, le=1.0, description="Temperature parameter for the LLM."
     )
 
-    @field_validator("message_id")
+    @validator('message_id')
     def validate_message_id(cls, v: str) -> str:
         if not v.startswith("llm-"):
             raise ValueError(
@@ -87,12 +87,12 @@ class AssistantMessage(BaseModel):
             )
         return v
 
-    @field_validator("role")
+    @validator('role')
     def validate_role(cls, v: str) -> str:
         assert v == "assistant", "role must equal 'assistant'."
         return v
 
-    @field_validator("prompt")
+    @validator('prompt')
     def validate_prompt(cls, v: str) -> str:
         return v
 
@@ -108,7 +108,7 @@ class Conversation(BaseModel):
     )
     llm_type: str = Field(description="The LLM to use for response generation.")
 
-    @field_validator("llm_type")
+    @validator('llm_type')
     def validate_llm_type(cls, v: str) -> str:
         if v.lower() not in VALID_MODELS:
             raise ValueError(
@@ -117,11 +117,20 @@ class Conversation(BaseModel):
         return v.lower()
 
 
-class Session(BaseModel):
-    """
-    Contains session information.
-    """
-    session_id: str = Field(pattern=r"^s-.*", description="The session ID.")
+class ConversationNode(BaseModel):
+    elementId: str = Field(description="Element ID of the conversation node")
+    id: int = Field(description="Internal ID of the conversation node")
+    BadMessagesCount: int = Field(description="Count of bad messages in the conversation")
+    GoodMessagesCount: int = Field(description="Count of good messages in the conversation")
+    conversation_length: int = Field(description="Length of the conversation")
+    conversation_id: str = Field(description="Conversation ID")
+    llm: str = Field(description="The LLM used for the conversation")
+
+
+class SessionNode(BaseModel):
+    conversation_count: int = Field(description="Count of conversations in the session")
+    createTime: datetime = Field(description="Creation time of the session")
+    session_id: str = Field(description="Session ID")
 
 
 class DocumentNode(BaseModel):
@@ -166,5 +175,3 @@ class ConversationEntry(BaseModel):
     message_nodes: List[MessageNode]
     document_relationships: List[DocumentRelationship]
     message_relationships: List[MessageRelationship]
-
-

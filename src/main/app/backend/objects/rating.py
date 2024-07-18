@@ -1,6 +1,6 @@
 from typing import List, Dict, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
 
 class Rating(BaseModel):
@@ -20,8 +20,8 @@ class Rating(BaseModel):
         default="", description="The feedback message for a given LLM response."
     )
 
-    @field_validator("value")
-    def assert_proper_rating(cls, v: str) -> str:
+    @validator('value')
+    def validate_proper_rating(cls, v: str) -> str:
         """
         Validate the rating value.
         """
