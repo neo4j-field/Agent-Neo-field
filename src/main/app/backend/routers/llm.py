@@ -1,16 +1,20 @@
 from typing import List
 from uuid import uuid4
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from database.communicator import GraphWriter, GraphReader
+
+from objects.graphtypes import (ConversationEntry, AssistantNode, MessageNode, DocumentNode, SessionNode,
+                                ConversationNode,
+                                MessageRelationship, ConversationRelationship, AssistantRelationship)
 from objects.question import Question
 from objects.response import Response, GraphResponse
-from objects.graphtypes import (UserMessage, AssistantMessage, ConversationEntry, MessageNode, DocumentNode,
-                                DocumentRelationship, MessageRelationship)
+from objects.types import UserMessage, AssistantMessage
 from resources.prompts import get_prompt_no_context_template, get_prompt_template, get_prompt_no_context
 from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol
 from tools.llm import LLM
-from tools.secret_manager import SecretManager, GoogleSecretManager, EnvSecretManager
+from tools.secret_manager import EnvSecretManager
 
 PUBLIC = True
 
@@ -193,6 +197,7 @@ def log_assistant_message(
     )
 
 
+# history_data: List[Tuple[Tuple[List, List], Tuple[List, List]]]:
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
 async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)):
     """
@@ -206,15 +211,61 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
 
         conversation_entries = []
 
-        for messages, documents in history_data:
-            message_nodes, message_rels = messages
-            document_nodes, document_rels = documents
+        for documents, messages in history_data:
+            message_path_nodes, message_path_rels = messages
+
+            for node in message_path_nodes:
+                print(node.labels)
+
+            document_path_nodes, document_path_rels = documents
+
+            print('terminator')
+
+            for node in document_path_nodes:
+                print(node.labels)
+
+            conversation_nodes = []
+            message_nodes = []
+            assistant_nodes = []
+            conversation_rels = []
+            message_rels = []
+            assistant_rels = []
+
+            for node in message_path_nodes:
+                if 'Assistant' in node.labels:
+                    assistant_nodes.append(create_assistant_node(node))
+                elif 'Message' in node.labels:
+                    message_nodes.append(create_message_node(node))
+                elif 'Conversation' in node.labels:
+                    conversation_nodes.append(create_conversation_node(node))
+
+            for rel in message_path_rels:
+                start_node_labels = rel.start_node.labels
+                end_node_labels = rel.end_node.labels
+
+                if 'Message' in start_node_labels and 'Message' in end_node_labels:
+                    data = {'start_node': rel.start_node, 'end_node': rel.end_node}
+                    message_rels.append(create_message_relationship(data))
+                elif 'Assistant' in start_node_labels and 'Document' in end_node_labels:
+                    data = {'start_node': rel.start_node, 'end_node': rel.end_node}
+                    assistant_rels.append(create_assistant_relationship(data))
+                elif 'Conversation' in start_node_labels and 'Message' in end_node_labels:
+                    data = {'start_node': rel.start_node, 'end_node': rel.end_node}
+                    conversation_rels.append(create_conversation_relationship(data))
+
+            assistant_node = create_assistant_node(document_path_nodes[0])
+            document_node = create_document_node(document_path_nodes[1])
+            assistant_rel_data = {'start_node': assistant_node, 'end_node': document_node}
+            assistant_rel = create_assistant_relationship(assistant_rel_data)
 
             entry = ConversationEntry(
-                document_nodes=[create_document_node(doc) for doc in document_nodes],
-                message_nodes=[create_message_node(msg) for msg in message_nodes],
-                document_relationships=[create_document_relationship(rel) for rel in document_rels],
-                message_relationships=[create_message_relationship(rel) for rel in message_rels]
+                conversation_nodes=conversation_nodes,
+                document_nodes=[document_node],
+                message_nodes=message_nodes,
+                assistant_nodes=assistant_nodes,
+                conversation_relationships=conversation_rels,
+                message_relationships=message_rels,
+                assistant_relationships=[assistant_rel]
             )
 
             conversation_entries.append(entry)
@@ -226,36 +277,38 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
 
 
 def create_document_node(data: dict) -> DocumentNode:
-    required_fields = ["community", "contextCount", "embedding", "fast_rp_similarity", "index", "pageRank", "text",
+    required_fields = ["community", "contextCount", "embedding", "fastRP_similarity", "index", "pageRank", "text",
                        "url"]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
-    return DocumentNode(**data)
+    return DocumentNode(
+        community=data['community'],
+        contextCount=data['contextCount'],
+        embedding=data['embedding'],
+        fastRP_similarity=data['fastRP_similarity'],
+        index=data['index'],
+        pageRank=data['pageRank'],
+        text=data['text'],
+        url=data['url']
+    )
 
 
 def create_message_node(data: dict) -> MessageNode:
-    required_fields = ["id", "content", "role", "postTime"]
+    required_fields = ["content", "embedding", "id", "postTime", "role"]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
-    return MessageNode(**data)
-
-
-def create_document_relationship(data: dict) -> DocumentRelationship:
-    required_fields = ["start_node", "end_node"]
-    missing_fields = [field for field in required_fields if field not in data]
-
-    if missing_fields:
-        raise ValueError(f"Missing fields: {missing_fields}")
-
-    return DocumentRelationship(
-        start_node=create_document_node(data['start_node']),
-        end_node=create_document_node(data['end_node'])
+    return MessageNode(
+        content=data['content'],
+        embedding=data['embedding'],
+        id=data['id'],
+        postTime=data['postTime'].to_native(),
+        role=data['role']
     )
 
 
@@ -269,4 +322,67 @@ def create_message_relationship(data: dict) -> MessageRelationship:
     return MessageRelationship(
         start_node=create_message_node(data['start_node']),
         end_node=create_message_node(data['end_node'])
+    )
+
+
+def create_assistant_node(data: dict) -> AssistantNode:
+    required_fields = ['content', 'fastRP_similarity', 'id', 'numDocs', 'postTime', 'rating', 'responseCommunity',
+                       'role', 'similarityPR']
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return AssistantNode(
+        content=data['content'],
+        fastRP_similarity=data['fastRP_similarity'],
+        id=data['id'],
+        numDocs=data['numDocs'],
+        postTime=data['postTime'].to_native(),
+        rating=data['rating'],
+        responseCommunity=data['responseCommunity'],
+        role=data['role'],
+        similarityPR=data['similarityPR']
+    )
+
+
+def create_conversation_node(data: dict) -> ConversationNode:
+    required_fields = ["BadMessagesCount", "GoodMessagesCount", "conversation_length", "id", "llm"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return ConversationNode(
+        BadMessagesCount=data['BadMessagesCount'],
+        GoodMessagesCount=data['GoodMessagesCount'],
+        conversation_length=data['conversation_length'],
+        id=data['id'],
+        llm=data['llm']
+    )
+
+
+def create_conversation_relationship(data: dict) -> ConversationRelationship:
+    required_fields = ["start_node", "end_node"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return ConversationRelationship(
+        start_node=create_conversation_node(data['start_node']),
+        end_node=create_message_node(data['end_node'])
+    )
+
+
+def create_assistant_relationship(data: dict) -> AssistantRelationship:
+    required_fields = ["start_node", "end_node"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return AssistantRelationship(
+        start_node=create_assistant_node(data['start_node']),
+        end_node=create_document_node(data['end_node'])
     )

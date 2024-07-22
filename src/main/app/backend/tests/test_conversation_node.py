@@ -1,6 +1,6 @@
 import unittest
 
-from objects.graphtypes import Conversation
+from objects import Conversation
 
 
 class TestConversation(unittest.TestCase):
