@@ -197,6 +197,7 @@ def log_assistant_message(
     )
 
 
+#todo: decouple the parsing with the request.
 # history_data: List[Tuple[Tuple[List, List], Tuple[List, List]]]:
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
 async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)):
@@ -213,16 +214,7 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
 
         for documents, messages in history_data:
             message_path_nodes, message_path_rels = messages
-
-            for node in message_path_nodes:
-                print(node.labels)
-
             document_path_nodes, document_path_rels = documents
-
-            print('terminator')
-
-            for node in document_path_nodes:
-                print(node.labels)
 
             conversation_nodes = []
             message_nodes = []
@@ -243,13 +235,21 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
                 start_node_labels = rel.start_node.labels
                 end_node_labels = rel.end_node.labels
 
-                if 'Message' in start_node_labels and 'Message' in end_node_labels:
+                if 'Message' in start_node_labels and 'Message' in end_node_labels and 'Assistant' in end_node_labels:
+                    print('called here 1')
+                    for k, v in rel.end_node.items():
+                        print(k)
+                        if k == 'id' or k == 'role':
+                            print(v)
+                    print(f'end node labels are: {rel.end_node.labels}')
                     data = {'start_node': rel.start_node, 'end_node': rel.end_node}
                     message_rels.append(create_message_relationship(data))
                 elif 'Assistant' in start_node_labels and 'Document' in end_node_labels:
+                    print('called here2')
                     data = {'start_node': rel.start_node, 'end_node': rel.end_node}
                     assistant_rels.append(create_assistant_relationship(data))
                 elif 'Conversation' in start_node_labels and 'Message' in end_node_labels:
+                    print('called here3')
                     data = {'start_node': rel.start_node, 'end_node': rel.end_node}
                     conversation_rels.append(create_conversation_relationship(data))
 
@@ -321,13 +321,13 @@ def create_message_relationship(data: dict) -> MessageRelationship:
 
     return MessageRelationship(
         start_node=create_message_node(data['start_node']),
-        end_node=create_message_node(data['end_node'])
+        end_node=create_assistant_node(data['end_node'])
     )
 
 
 def create_assistant_node(data: dict) -> AssistantNode:
     required_fields = ['content', 'fastRP_similarity', 'id', 'numDocs', 'postTime', 'rating', 'responseCommunity',
-                       'role', 'similarityPR']
+                       'role', 'similarityPR','vectorIndexSearch']
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
@@ -342,7 +342,8 @@ def create_assistant_node(data: dict) -> AssistantNode:
         rating=data['rating'],
         responseCommunity=data['responseCommunity'],
         role=data['role'],
-        similarityPR=data['similarityPR']
+        similarityPR=data['similarityPR'],
+        vectorIndexSearch=data['vectorIndexSearch']
     )
 
 
@@ -358,7 +359,8 @@ def create_conversation_node(data: dict) -> ConversationNode:
         GoodMessagesCount=data['GoodMessagesCount'],
         conversation_length=data['conversation_length'],
         id=data['id'],
-        llm=data['llm']
+        llm=data['llm'],
+        temperature=data['temperature']
     )
 
 

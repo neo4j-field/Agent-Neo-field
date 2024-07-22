@@ -23,6 +23,7 @@ class AssistantNode(BaseModel):
     responseCommunity: int = Field(description="Response community ID")
     role: str = Field(description="Role of the node")
     similarityPR: float = Field(description="Similarity PageRank score")
+    vectorIndexSearch: bool = Field(description="vector index")
 
 
 class ConversationNode(BaseModel):
@@ -31,6 +32,7 @@ class ConversationNode(BaseModel):
     conversation_length: int = Field(description="Length of the conversation")
     id: str = Field(description="Conversation ID")
     llm: str = Field(description="The LLM used for the conversation")
+    temperature: float = Field(description="llm temperature")
 
 
 class DocumentNode(BaseModel):
@@ -63,12 +65,12 @@ class MessageNode(BaseModel):
 
 class ConversationRelationship(BaseModel):
     start_node: ConversationNode = Field(description="start node of the conversation")
-    end_node: ConversationNode = Field(description="first message in the conversation")
+    end_node: MessageNode = Field(description="first message in the conversation")
 
 
 class MessageRelationship(BaseModel):
     start_node: MessageNode = Field(description="start message node in relationship")
-    end_node: MessageNode = Field(description="end message node in relationship")
+    end_node: AssistantNode = Field(description="end message node in relationship")
 
 
 class AssistantRelationship(BaseModel):
