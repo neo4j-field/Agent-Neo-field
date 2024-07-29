@@ -196,23 +196,20 @@ def log_assistant_message(
     )
 
 
-
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
 async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)):
     """
     Endpoint to fetch detailed graph data and conversation history for a given conversation ID.
     """
     try:
-        history_data = reader.retrieve_conversation_history(conversation_id)
+        conversation_history_data: List[Tuple] = reader.retrieve_conversation_history(conversation_id)
 
-        if not history_data:
+        if not conversation_history_data:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
-        conversation_entries = []
-
-        for documents, messages in history_data:
-            parse_message_paths(messages)
-            parse_document_paths(documents)
+        for document_path, message_path in conversation_history_data:
+            parse_document_paths(document_path)
+            parse_message_paths(message_path)
 
             conversation_nodes = []
             message_nodes = []
@@ -274,23 +271,55 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def parse_document_paths(documents: Tuple[List,List]):
-    pass
+def parse_document_paths(document_path: Path):
+    if isinstance(document_path, Path):
+        path_nodes = [node for node in document_path.nodes]
+        path_relationships = [rel for rel in document_path.relationships]
 
-def parse_message_paths(messages: Tuple[List,List]):
-    message_path_nodes, message_path_rels = messages
-    parse_message_nodes(message_path_nodes)
-    parse_message_relationships(message_path_rels)
+        encode_document_path_nodes(path_nodes)
+        encode_document_path_relationships(path_relationships)
+    else:
+        raise TypeError(f"Expected a Path object, but got {type(document_path).__name__}")
 
-def parse_document_nodes():
-    pass
 
-def parse_document_relationships():
-    pass
+
+def encode_document_path_relationships(path_relationships: List[Relationship]):
+
+def parse_message_paths(message_path: Path):
+    if isinstance(message_path, Path):
+        path_nodes = [node for node in message_path.nodes]
+        path_relationships = [rel for rel in message_path.relationships]
+
+        encode_message_path_nodes(path_nodes)
+        encode_message_path_relationships(path_relationships)
+    else:
+        raise TypeError(f"Expected a Path object, but got {type(document_path).__name__}")
+
+
+def encode_message_path_nodes(path_nodes: List[Node]):
+    assistant_nodes = []
+    message_nodes = []
+    conversation_nodes = []
+
+    for node in path_nodes:
+        if 'Assistant' in node.labels:
+            assistant_nodes.append(create_assistant_node(node))
+        elif 'Message' in node.labels:
+            message_nodes.append(create_message_node(node))
+        elif 'Conversation' in node.labels:
+            conversation_nodes.append(create_conversation_node(node))
+
+
+def encode_message_path_relationships(path_nodes: List[Node]):
+    assistant_node = path_nodes[0]
+    document_node = path_nodes[1]
+
+    assistant_rel_data = {'start_node': assistant_node, 'end_node': document_node}
+
+    create_assistant_relationship(assistant_rel_data)
 
 
 def parse_message_nodes(message_path_nodes: List[Node]):
-
     assistant_nodes = []
     message_nodes = []
     conversation_nodes = []
@@ -302,13 +331,6 @@ def parse_message_nodes(message_path_nodes: List[Node]):
             message_nodes.append(create_message_node(node))
         elif 'Conversation' in node.labels:
             conversation_nodes.append(create_conversation_node(node))
-
-
-def parse_message_relationships():
-    start_node_labels = rel.start_node.labels
-    end_node_labels = rel.end_node.labels
-
-
 
 
 
@@ -365,7 +387,7 @@ def create_message_relationship(data: Node) -> MessageRelationship:
 
 def create_assistant_node(data: Node) -> AssistantNode:
     required_fields = ['content', 'fastRP_similarity', 'id', 'numDocs', 'postTime', 'rating', 'responseCommunity',
-                       'role', 'similarityPR','vectorIndexSearch']
+                       'role', 'similarityPR', 'vectorIndexSearch']
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
@@ -415,7 +437,7 @@ def create_conversation_relationship(data: Node) -> ConversationRelationship:
     )
 
 
-def create_assistant_relationship(data: Node) -> AssistantRelationship:
+def create_assistant_relationship(data: dict) -> AssistantRelationship:
     required_fields = ["start_node", "end_node"]
     missing_fields = [field for field in required_fields if field not in data]
 
