@@ -1,8 +1,7 @@
-from typing import List
+from typing import List, Tuple
 from uuid import uuid4
-
+from neo4j.graph import Node, Relationship, Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-
 from database.communicator import GraphWriter, GraphReader
 
 from objects.graphtypes import (ConversationEntry, AssistantNode, MessageNode, DocumentNode, SessionNode,
@@ -197,8 +196,7 @@ def log_assistant_message(
     )
 
 
-#todo: decouple the parsing with the request.
-# history_data: List[Tuple[Tuple[List, List], Tuple[List, List]]]:
+
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
 async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)):
     """
@@ -213,8 +211,8 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         conversation_entries = []
 
         for documents, messages in history_data:
-            message_path_nodes, message_path_rels = messages
-            document_path_nodes, document_path_rels = documents
+            parse_message_paths(messages)
+            parse_document_paths(documents)
 
             conversation_nodes = []
             message_nodes = []
@@ -276,7 +274,47 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def create_document_node(data: dict) -> DocumentNode:
+def parse_document_paths(documents: Tuple[List,List]):
+    pass
+
+def parse_message_paths(messages: Tuple[List,List]):
+    message_path_nodes, message_path_rels = messages
+    parse_message_nodes(message_path_nodes)
+    parse_message_relationships(message_path_rels)
+
+def parse_document_nodes():
+    pass
+
+def parse_document_relationships():
+    pass
+
+
+def parse_message_nodes(message_path_nodes: List[Node]):
+
+    assistant_nodes = []
+    message_nodes = []
+    conversation_nodes = []
+
+    for node in message_path_nodes:
+        if 'Assistant' in node.labels:
+            assistant_nodes.append(create_assistant_node(node))
+        elif 'Message' in node.labels:
+            message_nodes.append(create_message_node(node))
+        elif 'Conversation' in node.labels:
+            conversation_nodes.append(create_conversation_node(node))
+
+
+def parse_message_relationships():
+    start_node_labels = rel.start_node.labels
+    end_node_labels = rel.end_node.labels
+
+
+
+
+
+
+
+def create_document_node(data: Node) -> DocumentNode:
     required_fields = ["community", "contextCount", "embedding", "fastRP_similarity", "index", "pageRank", "text",
                        "url"]
     missing_fields = [field for field in required_fields if field not in data]
@@ -296,7 +334,7 @@ def create_document_node(data: dict) -> DocumentNode:
     )
 
 
-def create_message_node(data: dict) -> MessageNode:
+def create_message_node(data: Node) -> MessageNode:
     required_fields = ["content", "embedding", "id", "postTime", "role"]
     missing_fields = [field for field in required_fields if field not in data]
 
@@ -312,7 +350,7 @@ def create_message_node(data: dict) -> MessageNode:
     )
 
 
-def create_message_relationship(data: dict) -> MessageRelationship:
+def create_message_relationship(data: Node) -> MessageRelationship:
     required_fields = ["start_node", "end_node"]
     missing_fields = [field for field in required_fields if field not in data]
 
@@ -325,7 +363,7 @@ def create_message_relationship(data: dict) -> MessageRelationship:
     )
 
 
-def create_assistant_node(data: dict) -> AssistantNode:
+def create_assistant_node(data: Node) -> AssistantNode:
     required_fields = ['content', 'fastRP_similarity', 'id', 'numDocs', 'postTime', 'rating', 'responseCommunity',
                        'role', 'similarityPR','vectorIndexSearch']
     missing_fields = [field for field in required_fields if field not in data]
@@ -347,7 +385,7 @@ def create_assistant_node(data: dict) -> AssistantNode:
     )
 
 
-def create_conversation_node(data: dict) -> ConversationNode:
+def create_conversation_node(data: Node) -> ConversationNode:
     required_fields = ["BadMessagesCount", "GoodMessagesCount", "conversation_length", "id", "llm"]
     missing_fields = [field for field in required_fields if field not in data]
 
@@ -364,7 +402,7 @@ def create_conversation_node(data: dict) -> ConversationNode:
     )
 
 
-def create_conversation_relationship(data: dict) -> ConversationRelationship:
+def create_conversation_relationship(data: Node) -> ConversationRelationship:
     required_fields = ["start_node", "end_node"]
     missing_fields = [field for field in required_fields if field not in data]
 
@@ -377,7 +415,7 @@ def create_conversation_relationship(data: dict) -> ConversationRelationship:
     )
 
 
-def create_assistant_relationship(data: dict) -> AssistantRelationship:
+def create_assistant_relationship(data: Node) -> AssistantRelationship:
     required_fields = ["start_node", "end_node"]
     missing_fields = [field for field in required_fields if field not in data]
 

@@ -1,14 +1,19 @@
 import os
+
+import neo4j
 import pandas as pd
 import time
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict
 import uuid
 from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
 from langchain.chains import ConversationChain
 from langchain.memory import ConversationSummaryBufferMemory
 from langchain.prompts.prompt import PromptTemplate
+from neo4j import Record, Result
 from neo4j.exceptions import ConstraintError
 import openai
+
+from neo4j.graph import Node, Relationship, Path
 
 from .drivers import init_driver
 from tools import SecretManager, timeit
@@ -369,11 +374,15 @@ class GraphReader(Communicator):
             session.close()
         return pd.DataFrame(docs, columns=["url", "text", "index"])
 
-    def retrieve_conversation_history(self, conversation_id: str) -> List[Tuple[Tuple[List, List], Tuple[List, List]]]:
+    def retrieve_conversation_history(self, conversation_id: str) -> List[Tuple]:
         """
         This function grabs the entire conversation history and the referenced document chunks.
         :param conversation_id:
-        :return:
+        :return: a list of tuples.
+        tuple[0] is the neo4j message path
+        tuple[1] is the neo4j document path
+
+        these are returned by the inline cypher query
         """
 
         @timeit
@@ -392,39 +401,18 @@ class GraphReader(Communicator):
             WITH messagePath, documentPath
             RETURN documentPath, messagePath as messagePaths
             LIMIT 50"""
-                , conversation_id=conversation_id).values()
+                , conversation_id=conversation_id)
 
         try:
             with self.driver.session(database=self.database_name) as session:
-                conversation_records = session.execute_read(retrieve_conversation)
-                if conversation_records:
-                    pass
-                else:
-                    print('No conversation records found.')
+                conversation_result: neo4j.Result = session.execute_read(retrieve_conversation)
+                conversation_paths: List[Tuple] = [tuple(record) for record in conversation_result]
+                return conversation_paths
 
         except Exception as err:
             print(f'Error retrieving conversation records: {err}')
             session.close()
             raise
-
-        data = []
-        for idx, record in enumerate(conversation_records):
-            document_path = record[0]
-            message_path = record[1]
-
-            document_nodes = [document_node for document_node in document_path.nodes]
-            document_relationships = [document_relationship for document_relationship in document_path.relationships]
-
-            documents = (document_nodes, document_relationships)
-
-            message_nodes = [message_node for message_node in message_path.nodes]
-            message_relationships = [message_relationship for message_relationship in message_path.relationships]
-
-            messages = (message_nodes, message_relationships)
-
-            data.append((documents, messages))
-
-        return data
 
     def match_by_id(self, ids: List[str]) -> int:
         """
