@@ -389,30 +389,32 @@ class GraphReader(Communicator):
         def retrieve_conversation(tx):
             return tx.run(
                 """
-            MATCH (c:Conversation {id: $conversation_id})
-            WITH c
-            MATCH (c) - [:FIRST] -> (startMessage:Message)
-            WITH c, startMessage
-            MATCH messagePath = (c)-[:FIRST]-(startMessage)
+                MATCH (c:Conversation {id: $conversation_id})
+                WITH c
+                MATCH (c) - [:FIRST] -> (startMessage:Message)
+                WITH c, startMessage
+                MATCH messagePath = (c)-[:FIRST]-(startMessage)
                 ((question:Message)-[:NEXT]->(response)){1,25}
-            WITH messagePath, startMessage, response
-            UNWIND response as resp
-            MATCH documentPath = (resp)-[:HAS_CONTEXT]->(:Document)
-            WITH messagePath, documentPath
-            RETURN documentPath, messagePath as messagePaths
-            LIMIT 50"""
-                , conversation_id=conversation_id)
+                WITH messagePath, startMessage, response
+                UNWIND response as resp
+                MATCH documentPaths = (resp)-[:HAS_CONTEXT]->(:Document)
+                WITH messagePath, documentPaths
+                RETURN documentPaths, messagePath as messagePaths
+                LIMIT 50"""
+                , conversation_id=conversation_id).to_eager_result()
+
 
         try:
             with self.driver.session(database=self.database_name) as session:
-                conversation_result: neo4j.Result = session.execute_read(retrieve_conversation)
-                conversation_paths: List[Tuple] = [tuple(record) for record in conversation_result]
-                return conversation_paths
+                conversation_result: neo4j.EagerResult = session.execute_read(retrieve_conversation)
+                conversation_paths: List[Tuple] = [tuple(record) for record in conversation_result.records]
 
         except Exception as err:
             print(f'Error retrieving conversation records: {err}')
             session.close()
             raise
+
+        return conversation_paths
 
     def match_by_id(self, ids: List[str]) -> int:
         """

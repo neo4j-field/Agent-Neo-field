@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from uuid import uuid4
 from neo4j.graph import Node, Relationship, Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -207,60 +207,15 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         if not conversation_history_data:
             raise HTTPException(status_code=404, detail="Conversation not found")
 
+        conversation_entries: List[ConversationEntry] = []
+
         for document_path, message_path in conversation_history_data:
-            parse_document_paths(document_path)
-            parse_message_paths(message_path)
-
-            conversation_nodes = []
-            message_nodes = []
-            assistant_nodes = []
-            conversation_rels = []
-            message_rels = []
-            assistant_rels = []
-
-            for node in message_path_nodes:
-                if 'Assistant' in node.labels:
-                    assistant_nodes.append(create_assistant_node(node))
-                elif 'Message' in node.labels:
-                    message_nodes.append(create_message_node(node))
-                elif 'Conversation' in node.labels:
-                    conversation_nodes.append(create_conversation_node(node))
-
-            for rel in message_path_rels:
-                start_node_labels = rel.start_node.labels
-                end_node_labels = rel.end_node.labels
-
-                if 'Message' in start_node_labels and 'Message' in end_node_labels and 'Assistant' in end_node_labels:
-                    print('called here 1')
-                    for k, v in rel.end_node.items():
-                        print(k)
-                        if k == 'id' or k == 'role':
-                            print(v)
-                    print(f'end node labels are: {rel.end_node.labels}')
-                    data = {'start_node': rel.start_node, 'end_node': rel.end_node}
-                    message_rels.append(create_message_relationship(data))
-                elif 'Assistant' in start_node_labels and 'Document' in end_node_labels:
-                    print('called here2')
-                    data = {'start_node': rel.start_node, 'end_node': rel.end_node}
-                    assistant_rels.append(create_assistant_relationship(data))
-                elif 'Conversation' in start_node_labels and 'Message' in end_node_labels:
-                    print('called here3')
-                    data = {'start_node': rel.start_node, 'end_node': rel.end_node}
-                    conversation_rels.append(create_conversation_relationship(data))
-
-            assistant_node = create_assistant_node(document_path_nodes[0])
-            document_node = create_document_node(document_path_nodes[1])
-            assistant_rel_data = {'start_node': assistant_node, 'end_node': document_node}
-            assistant_rel = create_assistant_relationship(assistant_rel_data)
+            assistant_nodes, message_nodes, conversation_nodes = parse_message_path(message_path)
 
             entry = ConversationEntry(
                 conversation_nodes=conversation_nodes,
-                document_nodes=[document_node],
                 message_nodes=message_nodes,
-                assistant_nodes=assistant_nodes,
-                conversation_relationships=conversation_rels,
-                message_relationships=message_rels,
-                assistant_relationships=[assistant_rel]
+                assistant_nodes=assistant_nodes
             )
 
             conversation_entries.append(entry)
@@ -271,123 +226,46 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def parse_document_paths(document_path: Path):
-    if isinstance(document_path, Path):
-        path_nodes = [node for node in document_path.nodes]
-        path_relationships = [rel for rel in document_path.relationships]
+def parse_message_path(message_path: Path) -> Tuple[List[AssistantNode], List[MessageNode], List[ConversationNode]]:
+    assistant_nodes = []
+    message_nodes = []
+    conversation_nodes = []
 
-        encode_document_path_nodes(path_nodes)
-        encode_document_path_relationships(path_relationships)
-    else:
-        raise TypeError(f"Expected a Path object, but got {type(document_path).__name__}")
-
-
-
-def encode_document_path_relationships(path_relationships: List[Relationship]):
-
-def parse_message_paths(message_path: Path):
     if isinstance(message_path, Path):
         path_nodes = [node for node in message_path.nodes]
-        path_relationships = [rel for rel in message_path.relationships]
 
-        encode_message_path_nodes(path_nodes)
-        encode_message_path_relationships(path_relationships)
+        for node in path_nodes:
+            encoded_node = encode_message_path_node(node)
+            if isinstance(encoded_node, AssistantNode):
+                assistant_nodes.append(encoded_node)
+            elif isinstance(encoded_node, MessageNode):
+                message_nodes.append(encoded_node)
+            elif isinstance(encoded_node, ConversationNode):
+                conversation_nodes.append(encoded_node)
+        return assistant_nodes, message_nodes, conversation_nodes
+
     else:
-        raise TypeError(f"Expected a Path object, but got {type(document_path).__name__}")
+        raise TypeError(f"Expected a Path object, but got {type(message_path).__name__}")
 
 
-def encode_message_path_nodes(path_nodes: List[Node]):
-    assistant_nodes = []
-    message_nodes = []
-    conversation_nodes = []
-
-    for node in path_nodes:
-        if 'Assistant' in node.labels:
-            assistant_nodes.append(create_assistant_node(node))
-        elif 'Message' in node.labels:
-            message_nodes.append(create_message_node(node))
-        elif 'Conversation' in node.labels:
-            conversation_nodes.append(create_conversation_node(node))
+# Nodes along a message path have one of three types.
+MessagePathNodeTypes = Union[AssistantNode, MessageNode, ConversationNode]
 
 
-def encode_message_path_relationships(path_nodes: List[Node]):
-    assistant_node = path_nodes[0]
-    document_node = path_nodes[1]
-
-    assistant_rel_data = {'start_node': assistant_node, 'end_node': document_node}
-
-    create_assistant_relationship(assistant_rel_data)
-
-
-def parse_message_nodes(message_path_nodes: List[Node]):
-    assistant_nodes = []
-    message_nodes = []
-    conversation_nodes = []
-
-    for node in message_path_nodes:
-        if 'Assistant' in node.labels:
-            assistant_nodes.append(create_assistant_node(node))
-        elif 'Message' in node.labels:
-            message_nodes.append(create_message_node(node))
-        elif 'Conversation' in node.labels:
-            conversation_nodes.append(create_conversation_node(node))
-
-
-
-
-
-def create_document_node(data: Node) -> DocumentNode:
-    required_fields = ["community", "contextCount", "embedding", "fastRP_similarity", "index", "pageRank", "text",
-                       "url"]
-    missing_fields = [field for field in required_fields if field not in data]
-
-    if missing_fields:
-        raise ValueError(f"Missing fields: {missing_fields}")
-
-    return DocumentNode(
-        community=data['community'],
-        contextCount=data['contextCount'],
-        embedding=data['embedding'],
-        fastRP_similarity=data['fastRP_similarity'],
-        index=data['index'],
-        pageRank=data['pageRank'],
-        text=data['text'],
-        url=data['url']
-    )
-
-
-def create_message_node(data: Node) -> MessageNode:
-    required_fields = ["content", "embedding", "id", "postTime", "role"]
-    missing_fields = [field for field in required_fields if field not in data]
-
-    if missing_fields:
-        raise ValueError(f"Missing fields: {missing_fields}")
-
-    return MessageNode(
-        content=data['content'],
-        embedding=data['embedding'],
-        id=data['id'],
-        postTime=data['postTime'].to_native(),
-        role=data['role']
-    )
-
-
-def create_message_relationship(data: Node) -> MessageRelationship:
-    required_fields = ["start_node", "end_node"]
-    missing_fields = [field for field in required_fields if field not in data]
-
-    if missing_fields:
-        raise ValueError(f"Missing fields: {missing_fields}")
-
-    return MessageRelationship(
-        start_node=create_message_node(data['start_node']),
-        end_node=create_assistant_node(data['end_node'])
-    )
+def encode_message_path_node(node: Node) -> MessagePathNodeTypes:
+    if 'Assistant' in node.labels:
+        return create_assistant_node(node)
+    elif 'Message' in node.labels:
+        return create_message_node(node)
+    elif 'Conversation' in node.labels:
+        return create_conversation_node(node)
+    else:
+        raise ValueError("Unknown node type")
 
 
 def create_assistant_node(data: Node) -> AssistantNode:
-    required_fields = ['content', 'fastRP_similarity', 'id', 'numDocs', 'postTime', 'rating', 'responseCommunity',
-                       'role', 'similarityPR', 'vectorIndexSearch']
+    required_fields = ["content", "fastRP_similarity", "id", "numDocs", "postTime", "rating", "responseCommunity",
+                       "role", "similarityPR", "vectorIndexSearch"]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
@@ -404,6 +282,22 @@ def create_assistant_node(data: Node) -> AssistantNode:
         role=data['role'],
         similarityPR=data['similarityPR'],
         vectorIndexSearch=data['vectorIndexSearch']
+    )
+
+
+def create_message_node(data: Node) -> MessageNode:
+    required_fields = ["content", "embedding", "id", "postTime", "role"]
+    missing_fields = [field for field in required_fields if field not in data]
+
+    if missing_fields:
+        raise ValueError(f"Missing fields: {missing_fields}")
+
+    return MessageNode(
+        content=data['content'],
+        embedding=data['embedding'],
+        id=data['id'],
+        postTime=data['postTime'].to_native(),
+        role=data['role']
     )
 
 
@@ -424,16 +318,23 @@ def create_conversation_node(data: Node) -> ConversationNode:
     )
 
 
-def create_conversation_relationship(data: Node) -> ConversationRelationship:
-    required_fields = ["start_node", "end_node"]
+def create_document_node(data: Node) -> DocumentNode:
+    required_fields = ["community", "contextCount", "embedding", "fastRP_similarity", "index", "pageRank", "text",
+                       "url"]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
-    return ConversationRelationship(
-        start_node=create_conversation_node(data['start_node']),
-        end_node=create_message_node(data['end_node'])
+    return DocumentNode(
+        community=data['community'],
+        contextCount=data['contextCount'],
+        embedding=data['embedding'],
+        fastRP_similarity=data['fastRP_similarity'],
+        index=data['index'],
+        pageRank=data['pageRank'],
+        text=data['text'],
+        url=data['url']
     )
 
 
