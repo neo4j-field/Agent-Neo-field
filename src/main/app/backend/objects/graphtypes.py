@@ -82,7 +82,10 @@ class ConversationEntry(BaseModel):
     """
     Contains the conversation entry information. a conversation entry is both the question/response sequence and the referenced RAG documents.
     """
+    assistant_nodes_document_path: List[AssistantNode]
+    document_nodes: List[DocumentNode]
     conversation_nodes: List[ConversationNode]
     message_nodes: List[MessageNode]
-    assistant_nodes: List[AssistantNode]
+    assistant_nodes_message_path: List[AssistantNode]
+
 

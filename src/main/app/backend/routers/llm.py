@@ -210,12 +210,15 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         conversation_entries: List[ConversationEntry] = []
 
         for document_path, message_path in conversation_history_data:
-            assistant_nodes, message_nodes, conversation_nodes = parse_message_path(message_path)
+            assistant_nodes_doc_path, document_nodes = parse_document_path(document_path)
+            assistant_nodes_message_path, message_nodes, conversation_nodes = parse_message_path(message_path)
 
             entry = ConversationEntry(
+                assistant_nodes_document_path=assistant_nodes_doc_path,
+                document_nodes=document_nodes,
                 conversation_nodes=conversation_nodes,
                 message_nodes=message_nodes,
-                assistant_nodes=assistant_nodes
+                assistant_nodes_message_path=assistant_nodes_message_path
             )
 
             conversation_entries.append(entry)
@@ -224,6 +227,37 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def parse_document_path(document_path: Path) -> Tuple[List[AssistantNode], List[DocumentNode]]:
+
+    assistant_nodes = []
+    document_nodes = []
+
+    if isinstance(document_path, Path):
+        path_nodes = [node for node in document_path.nodes]
+
+        for node in path_nodes:
+            encoded_node = encode_document_path_node(node)
+            if isinstance(encoded_node, AssistantNode):
+                assistant_nodes.append(encoded_node)
+            elif isinstance(encoded_node, DocumentNode):
+                document_nodes.append(encoded_node)
+        return assistant_nodes, document_nodes
+    else:
+        raise TypeError(f'Expected a Path object but got {type(document_path).__name__}')
+
+
+DocumentPathNodeTypes = Union[AssistantNode, DocumentNode]
+
+
+def encode_document_path_node(node: Node) -> DocumentPathNodeTypes:
+    if 'Assistant' in node.labels:
+        return create_assistant_node(node)
+    elif 'Document' in node.labels:
+        return create_document_node(node)
+    else:
+        raise ValueError(f'Unknown Node Label(s):{node.labels}, unable to map to known types in a message path')
 
 
 def parse_message_path(message_path: Path) -> Tuple[List[AssistantNode], List[MessageNode], List[ConversationNode]]:
@@ -248,7 +282,6 @@ def parse_message_path(message_path: Path) -> Tuple[List[AssistantNode], List[Me
         raise TypeError(f"Expected a Path object, but got {type(message_path).__name__}")
 
 
-# Nodes along a message path have one of three types.
 MessagePathNodeTypes = Union[AssistantNode, MessageNode, ConversationNode]
 
 
@@ -260,7 +293,7 @@ def encode_message_path_node(node: Node) -> MessagePathNodeTypes:
     elif 'Conversation' in node.labels:
         return create_conversation_node(node)
     else:
-        raise ValueError("Unknown node type")
+        raise ValueError(f"Unknown Node Label(s):{node.labels}, unable to map to known types in a message path")
 
 
 def create_assistant_node(data: Node) -> AssistantNode:

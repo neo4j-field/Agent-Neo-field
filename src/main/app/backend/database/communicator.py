@@ -403,7 +403,6 @@ class GraphReader(Communicator):
                 LIMIT 50"""
                 , conversation_id=conversation_id).to_eager_result()
 
-
         try:
             with self.driver.session(database=self.database_name) as session:
                 conversation_result: neo4j.EagerResult = session.execute_read(retrieve_conversation)
