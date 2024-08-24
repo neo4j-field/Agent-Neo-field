@@ -197,7 +197,7 @@ def log_assistant_message(
 
 
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
-async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)):
+async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)) -> GraphResponse:
     """
     Endpoint to fetch detailed graph data and conversation history for a given conversation ID.
     """

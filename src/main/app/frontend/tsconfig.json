@@ -19,8 +19,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "typeRoots": ["./node_modules/@types"],
-    "types": ["react","react-dom","react-responsive","react-router-dom"]
+    "types": ["vite/client"]
   },
   "include": [
     "src"

@@ -1,14 +1,19 @@
-import React, { useContext, useState } from 'react';
+import React, {useContext, useEffect, useState, useCallback} from 'react';
 import { Drawer, Typography, SegmentedControl, Switch, Button } from '@neo4j-ndl/react';
 import { AppContextType } from '../types/types';
 import { AppContext } from '../App';
+import {GraphResponse} from "../types/graphtypes";
 
-function Sidebar() {
+function Sidebar({ conversationId }: { conversationId: string }) {
+
   const { settings, setSettings, toggleTheme, theme } = useContext(AppContext) as AppContextType;
+  const [conversationData, setConversationData] = useState<GraphResponse | null>(null);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
     const { name, value, checked, type } = target;
+
 
     setSettings((prevSettings) => ({
       ...prevSettings,
@@ -28,6 +33,34 @@ function Sidebar() {
       selectedLLM: newValue,
     }));
   };
+
+  const fetchConversationData = useCallback(async () => {
+    console.log('Fetching conversation data...'); // Add this log
+    try {
+        const response = await fetch(`/graph-llm/${conversationId}`);
+        console.log('response:', response);
+
+        if (!response.ok) {
+            throw new Error(`Error fetching data: ${response.statusText}`);
+        }
+
+        const text = await response.text();
+        console.log('raw response', text);
+
+        const data: GraphResponse = JSON.parse(text);
+        setConversationData(data);
+    } catch (error) {
+        console.error('Failed to fetch conversation data:', error);
+    }
+}, [conversationId]);
+
+
+
+  useEffect(() => {
+    if (conversationId) {
+      fetchConversationData();
+    }
+  }, [conversationId, fetchConversationData]);
 
   return (
     <>
@@ -103,6 +136,12 @@ function Sidebar() {
                     labelBefore
                     onChange={toggleTheme}
                 />
+            </section>
+            <section className="flex flex-col gap-y-4">
+                <Typography variant="h3"> JSON Data</Typography>
+                <div className="w-full bg-gray-800 text-white text-xs font-mono overflow-auto rounded p-3 max-h-64">
+                    {conversationData ? JSON.stringify(conversationData, null, 2) : 'no data found/fetched'}
+                </div>
             </section>
         </div>
       </Drawer>

@@ -10,15 +10,13 @@ import remarkGfm from 'remark-gfm';
 
 import { fetchWithAuth } from '../api/api';  // Correctly import fetchWithAuth
 
-function ChatInterface() {
-
+function ChatInterface({ conversationId }: { conversationId: string }) {
 
     const {settings} = useContext(AppContext) as { settings: Settings };
 
     const [input, setInput] = useState<string>(" ");
     const [messages, setMessages] = useState<Message[]>([]);
     const [sessionId] = useState<string>(() => `s-${uuidv4()}`);
-    const [conversationId] = useState<string>(() => `conv-${uuidv4()}`);
     const [messageHistory, setMessageHistory] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
     const [isResponseOk, setIsResponseOk] = useState<boolean>(false);

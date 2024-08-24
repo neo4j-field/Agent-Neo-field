@@ -14,29 +14,40 @@ class Auth {
     userAccessInfo: Record<string, unknown>;
 
     constructor() {
-        console.log("Initializing Auth0 configuration");
+        const domain = getDynamicConfigValue('AUTH_DOMAIN')!;
+        const clientID = getDynamicConfigValue('AUTH_CLIENT_ID')!;
+        const redirectUri = getDynamicConfigValue('AUTH_CALLBACK')!;
+        const authMethod = getDynamicConfigValue('AUTH_METHOD');
+
+        console.log("Initializing Auth0 configuration with:");
+        console.log(` Domain: ${domain}`);
+        console.log(` Client ID: ${clientID}`);
+        console.log(` Redirect URI: ${redirectUri}`);
+        console.log(` Auth Method: ${authMethod}`);
+
         this.auth0 = new auth0.WebAuth({
-            domain: getDynamicConfigValue('REACT_APP_AUTH_DOMAIN')!,
-            clientID: getDynamicConfigValue('REACT_APP_AUTH_CLIENT_ID')!, // I don't think I even need this... isn't this if deploying it to hive?
-            redirectUri: getDynamicConfigValue('REACT_APP_AUTH_CALLBACK')!,
+            domain: domain,
+            clientID: clientID,
+            redirectUri: redirectUri,
             responseType: 'token id_token',
             scope: 'openid email profile'
+
         });
-        this.idTokenPayload = {}
-        this.userAccessInfo = {}
-        this.login = this.login.bind(this);
+
+        this.idTokenPayload = {};
+        this.userAccessInfo = {};
+        this.login = this.login.bind(this)
         this.handleAuthentication = this.handleAuthentication.bind(this);
         this.isAuthenticated = this.isAuthenticated.bind(this);
         this.logout = this.logout.bind(this);
     }
-
     login() :void {
         console.log("Triggering login");
         this.auth0.authorize({
             prompt: "select_account"
         });
     }
-    isAuth0 = () :boolean => getDynamicConfigValue('REACT_APP_AUTH_METHOD') === "auth0";
+    isAuth0 = () :boolean => getDynamicConfigValue('AUTH_METHOD') === "auth0";
 
     getIdToken(): string | null {
     return localStorage.getItem("id_token");
@@ -125,20 +136,29 @@ class Auth {
 
     logout(): void{
         this.removeLocalStorageItems();
-        const authDomain = getDynamicConfigValue('REACT_APP_AUTH_DOMAIN' || 'REACT_APP_AUTH_DOMAIN not specified');
-        const logoutUrl = getDynamicConfigValue("REACT_APP_AUTH_LOGOUT_URL") || "REACT_APP_AUTH_LOGOUT_URL not specified";
+        const authDomain = getDynamicConfigValue('AUTH_DOMAIN' || 'AUTH_DOMAIN not specified');
+        const logoutUrl = getDynamicConfigValue("AUTH_LOGOUT_URL") || "AUTH_LOGOUT_URL not specified";
         window.location.replace(`https://${authDomain}/v2/logout/?returnTo=${logoutUrl}`); // do I even need client id here
 
     }
 
     isAuthenticated(): boolean {
-         console.log("Checking if user is authenticated");
-         if (this.isAuth0()) {
+        console.log("Checking if user is authenticated");
+        if (this.isAuth0()) {
             const expiresAt = Number(localStorage.getItem('expires_at') || '0');
-            return new Date().getTime() < expiresAt;
-        }
-        return false;
+            console.log(`  Token expires at: ${expiresAt}`);
+
+            const currentTime = new Date().getTime();
+            console.log(`  Current time: ${currentTime}`);
+
+            const isAuthenticated = currentTime < expiresAt;
+            console.log(`  Is authenticated: ${isAuthenticated}`);
+
+            return isAuthenticated;
     }
+    console.log("  Auth0 not configured, returning false.");
+    return false;
+}
 
 
 }

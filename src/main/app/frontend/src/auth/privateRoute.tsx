@@ -8,6 +8,8 @@ interface PrivateRouteProps {
 }
 
 const PrivateRoute = ({ element, appIsInitialized }: PrivateRouteProps): React.ReactElement => {
+    console.log("App is initialized:", appIsInitialized);
+    console.log("Auth.isAuthenticated():", auth.isAuthenticated());
     if (!appIsInitialized || !auth.isAuthenticated()) {
         // Correctly using Navigate to handle unauthenticated or uninitialized app state
         console.log('starting private route redirect')
