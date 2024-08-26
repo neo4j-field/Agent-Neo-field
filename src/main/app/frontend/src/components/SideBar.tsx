@@ -35,7 +35,6 @@ function Sidebar({ conversationId }: { conversationId: string }) {
   };
 
   const fetchConversationData = useCallback(async () => {
-    console.log('Fetching conversation data...'); // Add this log
     try {
         const response = await fetch(`/graph-llm/${conversationId}`);
         console.log('response:', response);

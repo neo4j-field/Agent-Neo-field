@@ -19,12 +19,6 @@ class Auth {
         const redirectUri = getDynamicConfigValue('AUTH_CALLBACK')!;
         const authMethod = getDynamicConfigValue('AUTH_METHOD');
 
-        console.log("Initializing Auth0 configuration with:");
-        console.log(` Domain: ${domain}`);
-        console.log(` Client ID: ${clientID}`);
-        console.log(` Redirect URI: ${redirectUri}`);
-        console.log(` Auth Method: ${authMethod}`);
-
         this.auth0 = new auth0.WebAuth({
             domain: domain,
             clientID: clientID,
@@ -42,7 +36,6 @@ class Auth {
         this.logout = this.logout.bind(this);
     }
     login() :void {
-        console.log("Triggering login");
         this.auth0.authorize({
             prompt: "select_account"
         });
@@ -54,7 +47,6 @@ class Auth {
   }
 
     async handleAuthentication(){
-        console.log("Handling authentication");
         const promise = new Promise<void>((resolve, reject) => {
             this.auth0.parseHash(async (err: auth0.Auth0ParseHashError | null, authResult: auth0.Auth0DecodedHash | null) => {
                 if (err) {
@@ -65,7 +57,6 @@ class Auth {
                     console.error("Invalid authentication result", authResult);
                     return reject(new Error("Invalid authentication result"));
                 }
-                console.log("Authentication successful, setting session");
                 this.setSession(authResult);
                 resolve();
             });
