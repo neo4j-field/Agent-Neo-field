@@ -74,20 +74,16 @@ class Auth {
     }
 
     silentAuth = async (): Promise<boolean> => {
-        console.log("Performing silent authentication check");
         return new Promise((resolve, reject) => {
             this.auth0.checkSession({}, (err, authResult?: AuthResult) => {
                 if (err) {
-                    console.error('Silent authentication error, login required: ', err);
                     reject(err);
                 }
                 else if (authResult && authResult.idToken) {
-                    console.log("Silent authentication successful, updating session");
                     this.setSession(authResult);
                     resolve(true);
                 }
                 else {
-                    console.log("Silent authentication failed, no idToken received");
                     resolve(false);
                 }
             });
@@ -95,7 +91,6 @@ class Auth {
   };
 
     setSession(authResult: auth0.Auth0DecodedHash) {
-        console.log("Setting session storage with auth results");
         const expiresIn = authResult.expiresIn ?? 3600;
         const expiresAt: number = expiresIn * 1000 + new Date().getTime();
 
@@ -118,16 +113,10 @@ class Auth {
         localStorage.setItem('expires_at', `${expiresAt}`);
         localStorage.setItem('link_idx', '1');
 
-        // Redirect to the home page after successful login
 
-        // Note: not redirecting here, this will be handled in callback.tsx
-        console.log("Session set");
-        // console.log("Session set, redirecting to home");
-        // window.location.href = '/';
     }
 
     removeLocalStorageItems(): void{
-        console.log("Clearing local storage items");
         localStorage.remove('user');
         localStorage.remove('access_token');
         localStorage.remove('id_token');
@@ -143,20 +132,16 @@ class Auth {
     }
 
     isAuthenticated(): boolean {
-        console.log("Checking if user is authenticated");
         if (this.isAuth0()) {
             const expiresAt = Number(localStorage.getItem('expires_at') || '0');
-            console.log(`  Token expires at: ${expiresAt}`);
 
             const currentTime = new Date().getTime();
-            console.log(`  Current time: ${currentTime}`);
 
             const isAuthenticated = currentTime < expiresAt;
-            console.log(`  Is authenticated: ${isAuthenticated}`);
 
             return isAuthenticated;
     }
-    console.log("  Auth0 not configured, returning false.");
+
     return false;
 }
 
