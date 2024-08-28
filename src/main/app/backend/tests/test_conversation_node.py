@@ -4,7 +4,6 @@ from objects import Conversation
 
 
 class TestConversation(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         pass

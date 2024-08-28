@@ -4,7 +4,6 @@ from objects.rating import Rating
 
 
 class TestRating(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         pass

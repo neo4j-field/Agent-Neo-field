@@ -15,7 +15,7 @@ from resources.prompts import get_prompt_template, get_prompt_no_context_templat
 from tools.secret_manager import EnvSecretManager
 from resources.valid_models import get_valid_models
 
-sm = EnvSecretManager(env_path='.env')
+sm = EnvSecretManager(env_path=".env")
 
 
 class LLM(BaseModel):
@@ -28,7 +28,7 @@ class LLM(BaseModel):
         default=0.0, ge=0.0, le=1.0, description="Temperature parameter for the LLM."
     )
 
-    @validator('llm_type')
+    @validator("llm_type")
     def validate_llm_type(cls, v: str) -> str:
         if v.lower() not in get_valid_models() + ["fake"]:
             raise ValueError(
@@ -36,7 +36,7 @@ class LLM(BaseModel):
             )
         return v.lower()
 
-    @validator('temperature')
+    @validator("temperature")
     def validate_temperature(cls, v: float) -> float:
         if not (0.0 <= v <= 1.0):
             raise ValueError("Temperature must be between 0.0 and 1.0.")
@@ -109,11 +109,11 @@ class LLM(BaseModel):
                 raise ValueError("Please provide a valid LLM type.")
 
     def get_response(
-            self,
-            question: Question,
-            user_id: str,
-            assistant_id: str,
-            context: Optional[pd.DataFrame] = None,
+        self,
+        question: Question,
+        user_id: str,
+        assistant_id: str,
+        context: Optional[pd.DataFrame] = None,
     ) -> str:
         """
         Get a response from the LLM.
@@ -135,15 +135,18 @@ class LLM(BaseModel):
             },
         )
 
-    def _format_llm_input(self, question: str, context: Optional[pd.DataFrame] = None) -> str:
+    def _format_llm_input(
+        self, question: str, context: Optional[pd.DataFrame] = None
+    ) -> str:
         """
         Format the LLM input and return the input along with the context IDs if they exist.
         """
 
         if context is not None:
             print("creating context prompt...")
-            return get_prompt_template(question=question, context=context[['url', 'text']].to_dict('records'))
+            return get_prompt_template(
+                question=question, context=context[["url", "text"]].to_dict("records")
+            )
         else:
             print("creating non-context prompt...")
             return get_prompt_no_context_template(question=question)
-

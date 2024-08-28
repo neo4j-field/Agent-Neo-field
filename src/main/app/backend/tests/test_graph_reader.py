@@ -7,7 +7,6 @@ from tools.secret_manager import SecretManager
 
 
 class TestGraphReader(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         assert (

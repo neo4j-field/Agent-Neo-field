@@ -19,7 +19,7 @@ class Response(BaseModel):
         description="A sequential list of the message ID history for a conversation.",
     )
 
-    @validator('message_history')
+    @validator("message_history")
     def validate_message_history(cls, v: List[str]) -> List[str]:
         for i in range(len(v)):
             if i % 2 == 0:
@@ -33,5 +33,7 @@ class GraphResponse(BaseModel):
     """
     Contains the detailed graph data for a conversation.
     """
-    conversation_entries: List[ConversationEntry] = Field(description="List of conversation entries containing nodes and relationships.")
 
+    conversation_entries: List[ConversationEntry] = Field(
+        description="List of conversation entries containing nodes and relationships."
+    )

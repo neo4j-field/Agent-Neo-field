@@ -20,7 +20,7 @@ class Rating(BaseModel):
         default="", description="The feedback message for a given LLM response."
     )
 
-    @validator('value')
+    @validator("value")
     def validate_proper_rating(cls, v: str) -> str:
         """
         Validate the rating value.

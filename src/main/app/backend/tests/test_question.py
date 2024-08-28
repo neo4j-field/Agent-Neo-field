@@ -4,7 +4,6 @@ from objects.question import Question
 
 
 class TestQuestion(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         pass

@@ -8,6 +8,7 @@ class AssistantMessage(BaseModel):
     """
     Contains assistant message information.
     """
+
     session_id: str = Field(pattern=r"^s-.*", description="The session ID.")
     conversation_id: str = Field(
         pattern=r"^conv-.*", description="The conversation ID."
@@ -40,7 +41,7 @@ class AssistantMessage(BaseModel):
         default=0.0, ge=0.0, le=1.0, description="Temperature parameter for the LLM."
     )
 
-    @validator('message_id')
+    @validator("message_id")
     def validate_message_id(cls, v: str) -> str:
         if not v.startswith("llm-"):
             raise ValueError(
@@ -48,12 +49,12 @@ class AssistantMessage(BaseModel):
             )
         return v
 
-    @validator('role')
+    @validator("role")
     def validate_role(cls, v: str) -> str:
         assert v == "assistant", "role must equal 'assistant'."
         return v
 
-    @validator('prompt')
+    @validator("prompt")
     def validate_prompt(cls, v: str) -> str:
         return v
 
@@ -80,7 +81,7 @@ class UserMessage(BaseModel):
         description="Whether the question is from the public facing app or not."
     )
 
-    @validator('message_id')
+    @validator("message_id")
     def validate_message_id(cls, v: str) -> str:
         if not v.startswith("user-"):
             raise ValueError(
@@ -88,7 +89,7 @@ class UserMessage(BaseModel):
             )
         return v
 
-    @validator('role')
+    @validator("role")
     def validate_role(cls, v: str) -> str:
         assert v == "user", "role must equal 'user'."
         return v
@@ -105,7 +106,7 @@ class Conversation(BaseModel):
     )
     llm_type: str = Field(description="The LLM to use for response generation.")
 
-    @validator('llm_type')
+    @validator("llm_type")
     def validate_llm_type(cls, v: str) -> str:
         if v.lower() not in VALID_MODELS:
             raise ValueError(

@@ -9,6 +9,7 @@ from tests.test_llm_route import GraphWriterMock
 
 client = TestClient(app)
 
+
 def override_get_writer():
     return GraphWriterMock()
 
@@ -17,7 +18,6 @@ app.dependency_overrides[get_writer] = override_get_writer
 
 
 class TestRatingRoute(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         cls.rating = {

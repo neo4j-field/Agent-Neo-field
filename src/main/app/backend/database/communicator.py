@@ -29,17 +29,18 @@ class Communicator:
     def __init__(self, secret_manager: SecretManager) -> None:
         self.sm = secret_manager
 
-        openai.api_key = self.sm.access_secret_version('OPENAI_API_KEY')
-        openai.api_version = self.sm.access_secret_version('OPENAI_API_VERSION')
+        openai.api_key = self.sm.access_secret_version("OPENAI_API_KEY")
+        openai.api_version = self.sm.access_secret_version("OPENAI_API_VERSION")
 
         self.driver = init_driver(
-            uri=self.sm.access_secret_version('NEO4J_URI'),
-            username=self.sm.access_secret_version('NEO4J_USERNAME'),
-            password=self.sm.access_secret_version('NEO4J_PASSWORD'))
+            uri=self.sm.access_secret_version("NEO4J_URI"),
+            username=self.sm.access_secret_version("NEO4J_USERNAME"),
+            password=self.sm.access_secret_version("NEO4J_PASSWORD"),
+        )
 
-        self.database_name = self.sm.access_secret_version('NEO4J_DATABASE')
-        self.project = self.sm.access_secret_version('GCP_PROJECT_ID')
-        self.region = self.sm.access_secret_version('GCP_REGION')
+        self.database_name = self.sm.access_secret_version("NEO4J_DATABASE")
+        self.project = self.sm.access_secret_version("GCP_PROJECT_ID")
+        self.region = self.sm.access_secret_version("GCP_REGION")
 
     def close_driver(self) -> None:
         """
@@ -50,11 +51,12 @@ class Communicator:
 
 
 class GraphWriter(Communicator):
-
     def __init__(self, secret_manager: SecretManager) -> None:
         super().__init__(secret_manager)
 
-    def log_new_conversation(self, message: UserMessage, llm_type: str, temperature: float) -> None:
+    def log_new_conversation(
+        self, message: UserMessage, llm_type: str, temperature: float
+    ) -> None:
         """
         This method creates a new conversation node and logs the
         initial user message in the neo4j database.
@@ -88,8 +90,9 @@ class GraphWriter(Communicator):
                 temperature=temperature,
                 content=message.content,
                 embedding=message.embedding,
-                role='user',
-                public=message.public)
+                role="user",
+                public=message.public,
+            )
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -134,16 +137,15 @@ class GraphWriter(Communicator):
             with self.driver.session(database=self.database_name) as session:
                 session.execute_write(log)
 
-
         except ConstraintError as err:
             print(err)
             session.close()
 
     def log_assistant(
-            self,
-            message: AssistantMessage,
-            previous_message_id: str,
-            context_ids: List[str],
+        self,
+        message: AssistantMessage,
+        previous_message_id: str,
+        context_ids: List[str],
     ) -> None:
         """
         This method logs a new assistant message to the neo4j database and
@@ -182,12 +184,13 @@ class GraphWriter(Communicator):
                 prevMessId=previous_message_id,
                 messId=message.message_id,
                 content=message.content,
-                role='assistant',
+                role="assistant",
                 contextIndices=context_ids,
                 numDocs=message.number_of_documents,
                 prompt=message.prompt,
                 resultingSummary=mem,
-                public=message.public)
+                public=message.public,
+            )
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -226,11 +229,12 @@ class GraphWriter(Communicator):
             session.close()
 
     def delete_by_id(self, ids: List[str]) -> None:
-        '''
+        """
         Delete nodes and relationships based on provided ids.
         :param ids:
         :return:
-        '''
+        """
+
         def delete_nodes_and_rels(tx):
             tx.run(
                 """
@@ -298,12 +302,12 @@ class GraphWriter(Communicator):
 
 
 class GraphReader(Communicator):
-
     def __init__(self, secret_manager: SecretManager) -> None:
         super().__init__(secret_manager)
 
-    def retrieve_context_documents(self, question_embedding: List[float],
-                                   number_of_context_documents: int = 10) -> pd.DataFrame:
+    def retrieve_context_documents(
+        self, question_embedding: List[float], number_of_context_documents: int = 10
+    ) -> pd.DataFrame:
         """
         This function takes the user question and creates an embedding of it
         using a vertexai model.
@@ -322,12 +326,15 @@ class GraphReader(Communicator):
             """
             This method runs vector similarity search on the document embeddings against the question embedding.
             """
-            return tx.run("""
+            return tx.run(
+                """
                             CALL db.index.vector.queryNodes('document-embeddings', toInteger($k), $questionEmbedding)
                             YIELD node AS vDocs, score
                             return vDocs.url as url, vDocs.text as text, vDocs.index as index
-                            """, questionEmbedding=question_embedding, k=number_of_context_documents
-                          ).values()
+                            """,
+                questionEmbedding=question_embedding,
+                k=number_of_context_documents,
+            ).values()
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -338,10 +345,12 @@ class GraphReader(Communicator):
 
         return pd.DataFrame(docs, columns=["url", "text", "index"])
 
-    def retrieve_context_documents_by_topic(self,
-                                            question_embedding: List[float],
-                                            number_of_topics: int = 3,
-                                            documents_per_topic: int = 4,):
+    def retrieve_context_documents_by_topic(
+        self,
+        question_embedding: List[float],
+        number_of_topics: int = 3,
+        documents_per_topic: int = 4,
+    ):
         """
         This function takes the user question and creates an embedding of it
         using a vertexai model.
@@ -410,16 +419,21 @@ class GraphReader(Communicator):
                 MATCH documentPaths = (resp)-[:HAS_CONTEXT]->(:Document)
                 WITH messagePath, documentPaths
                 RETURN documentPaths, messagePath as messagePaths
-                LIMIT 50"""
-                , conversation_id=conversation_id).to_eager_result()
+                LIMIT 50""",
+                conversation_id=conversation_id,
+            ).to_eager_result()
 
         try:
             with self.driver.session(database=self.database_name) as session:
-                conversation_result: neo4j.EagerResult = session.execute_read(retrieve_conversation)
-                conversation_paths: List[Tuple] = [tuple(record) for record in conversation_result.records]
+                conversation_result: neo4j.EagerResult = session.execute_read(
+                    retrieve_conversation
+                )
+                conversation_paths: List[Tuple] = [
+                    tuple(record) for record in conversation_result.records
+                ]
 
         except Exception as err:
-            print(f'Error retrieving conversation records: {err}')
+            print(f"Error retrieving conversation records: {err}")
             session.close()
             raise
 

@@ -9,14 +9,20 @@ class AssistantNode(BaseModel):
     postTime: datetime = Field(description="Post time of the response")
     prompt: str = Field(description="Prompt that led to this response")
     public: bool = Field(description="Whether the node is public or not")
-    resultingSummary: str = Field(description="Summary resulting from the assistant's response")
+    resultingSummary: str = Field(
+        description="Summary resulting from the assistant's response"
+    )
     role: str = Field(description="Role of the node")
     vectorIndexSearch: bool = Field(description="Whether vector index search was used")
 
 
 class ConversationNode(BaseModel):
-    BadMessagesCount: int = Field(description="Count of bad messages in the conversation")
-    GoodMessagesCount: int = Field(description="Count of good messages in the conversation")
+    BadMessagesCount: int = Field(
+        description="Count of bad messages in the conversation"
+    )
+    GoodMessagesCount: int = Field(
+        description="Count of good messages in the conversation"
+    )
     conversation_length: int = Field(description="Length of the conversation")
     id: str = Field(description="Conversation ID")
     llm: str = Field(description="The LLM used for the conversation")
@@ -27,6 +33,7 @@ class DocumentNode(BaseModel):
     """
     Contains document (node) information.
     """
+
     community: int = Field(description="community the node belongs too")
     contextCount: int = Field("context count")
     embedding: list[float] = Field(description="text embedding")
@@ -70,6 +77,7 @@ class ConversationEntry(BaseModel):
     """
     Contains the conversation entry information. a conversation entry is both the question/response sequence and the referenced RAG documents.
     """
+
     assistant_nodes_document_path: List[AssistantNode]
     document_nodes: List[DocumentNode]
     conversation_nodes: List[ConversationNode]

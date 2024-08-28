@@ -1,5 +1,5 @@
 def get_prompt_template(question: str, context: dict) -> str:
-    formatted_context = ', '.join(f"{doc['url']}: {doc['text']}" for doc in context)
+    formatted_context = ", ".join(f"{doc['url']}: {doc['text']}" for doc in context)
     return f"""
         Follow these steps exactly:
         1. Read this question as an experienced graph data scientist at Neo4j: {question}

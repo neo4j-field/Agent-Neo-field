@@ -22,7 +22,6 @@ test_ids = {
 
 
 class TestGraphWriter(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         assert (

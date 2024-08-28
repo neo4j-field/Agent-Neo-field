@@ -4,14 +4,30 @@ from neo4j.graph import Node, Relationship, Path
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from database.communicator import GraphWriter, GraphReader
 
-from objects.graphtypes import (ConversationEntry, AssistantNode, MessageNode, DocumentNode, SessionNode,
-                                ConversationNode,
-                                MessageRelationship, ConversationRelationship, AssistantRelationship)
+from objects.graphtypes import (
+    ConversationEntry,
+    AssistantNode,
+    MessageNode,
+    DocumentNode,
+    SessionNode,
+    ConversationNode,
+    MessageRelationship,
+    ConversationRelationship,
+    AssistantRelationship,
+)
 from objects.question import Question
 from objects.response import Response, GraphResponse
 from objects.types import UserMessage, AssistantMessage
-from resources.prompts import get_prompt_no_context_template, get_prompt_template, get_prompt_no_context
-from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol, FakeEmbeddingService
+from resources.prompts import (
+    get_prompt_no_context_template,
+    get_prompt_template,
+    get_prompt_no_context,
+)
+from tools.embedding import (
+    TextEmbeddingService,
+    EmbeddingServiceProtocol,
+    FakeEmbeddingService,
+)
 from tools.llm import LLM
 from tools.secret_manager import EnvSecretManager, GoogleSecretManager
 import os
@@ -19,7 +35,7 @@ from tools.secret_manager import SecretManager
 
 PUBLIC = True
 
-secret_manager = EnvSecretManager(env_path='.env')
+secret_manager = EnvSecretManager(env_path=".env")
 router = APIRouter()
 
 
@@ -27,7 +43,9 @@ def get_prompt(context: List[str]) -> str:
     """
     Determine the prompt used for LLM query.
     """
-    return get_prompt_no_context_template() if len(context) < 1 else get_prompt_template()
+    return (
+        get_prompt_no_context_template() if len(context) < 1 else get_prompt_template()
+    )
 
 
 def get_reader() -> GraphReader:
@@ -47,17 +65,17 @@ def get_writer() -> GraphWriter:
 
 
 def get_secret_manager() -> SecretManager:
-    if os.getenv('USE_GOOGLE_SECRET_MANAGER') == 'true':
-        project_id = os.getenv('GOOGLE_PROJECT_ID')
+    if os.getenv("USE_GOOGLE_SECRET_MANAGER") == "true":
+        project_id = os.getenv("GOOGLE_PROJECT_ID")
         return GoogleSecretManager(project_id=project_id)
     else:
-        env_path = os.getenv('ENV_PATH', '.env')
+        env_path = os.getenv("ENV_PATH", ".env")
         return EnvSecretManager(env_path=env_path)
 
 
 def get_embedding_service(sm: SecretManager) -> EmbeddingServiceProtocol:
-    local_dev = sm.access_secret_version('LOCAL_DEVELOPMENT')
-    is_local_dev = local_dev.lower() in ('true', '1', 't', 'y', 'yes')
+    local_dev = sm.access_secret_version("LOCAL_DEVELOPMENT")
+    is_local_dev = local_dev.lower() in ("true", "1", "t", "y", "yes")
 
     if is_local_dev:
         return FakeEmbeddingService()
@@ -107,18 +125,20 @@ async def get_response(question: Question) -> Response:
         conversation_id=question.conversation_id,
         content=llm_response,
         message_history=question.message_history
-                        + [user_message.message_id, assistant_message.message_id],
+        + [user_message.message_id, assistant_message.message_id],
     )
 
 
 @router.post("/llm", response_model=Response)
 async def get_response(
-        question: Question,
-        background_tasks: BackgroundTasks,
-        reader: GraphReader = Depends(get_reader),
-        writer: GraphWriter = Depends(get_writer),
-        embedding_service: EmbeddingServiceProtocol = Depends(lambda: get_embedding_service(get_secret_manager())),
-        llm: LLM = Depends(get_llm),
+    question: Question,
+    background_tasks: BackgroundTasks,
+    reader: GraphReader = Depends(get_reader),
+    writer: GraphWriter = Depends(get_writer),
+    embedding_service: EmbeddingServiceProtocol = Depends(
+        lambda: get_embedding_service(get_secret_manager())
+    ),
+    llm: LLM = Depends(get_llm),
 ) -> Response:
     """
     Gather context from the graph and retrieve a response from the designated LLM endpoint.
@@ -134,53 +154,65 @@ async def get_response(
 
     user_id: str = "user-" + str(uuid4())
     assistant_id: str = "llm-" + str(uuid4())
-    llm_response = llm.get_response(question=question, context=context, user_id=user_id, assistant_id=assistant_id)
+    llm_response = llm.get_response(
+        question=question, context=context, user_id=user_id, assistant_id=assistant_id
+    )
     print("response retrieved...")
     print(llm_response)
-    user_message = UserMessage(session_id=question.session_id,
-                               conversation_id=question.conversation_id,
-                               message_id=user_id,
-                               content=question.question,
-                               embedding=question_embedding,
-                               public=PUBLIC)
+    user_message = UserMessage(
+        session_id=question.session_id,
+        conversation_id=question.conversation_id,
+        message_id=user_id,
+        content=question.question,
+        embedding=question_embedding,
+        public=PUBLIC,
+    )
 
-    assistant_message = AssistantMessage(session_id=question.session_id,
-                                         conversation_id=question.conversation_id,
-                                         message_id=assistant_id,
-                                         prompt=get_prompt(context=context),
-                                         content=llm_response.content,
-                                         public=PUBLIC,
-                                         vectorIndexSearch=True,
-                                         number_of_documents=question.number_of_documents,
-                                         temperature=question.temperature)
+    assistant_message = AssistantMessage(
+        session_id=question.session_id,
+        conversation_id=question.conversation_id,
+        message_id=assistant_id,
+        prompt=get_prompt(context=context),
+        content=llm_response.content,
+        public=PUBLIC,
+        vectorIndexSearch=True,
+        number_of_documents=question.number_of_documents,
+        temperature=question.temperature,
+    )
 
-    background_tasks.add_task(log_user_message,
-                              user_message,
-                              question.message_history, question.llm_type,
-                              question.temperature,
-                              writer
-                              )
+    background_tasks.add_task(
+        log_user_message,
+        user_message,
+        question.message_history,
+        question.llm_type,
+        question.temperature,
+        writer,
+    )
 
-    background_tasks.add_task(log_assistant_message,
-                              assistant_message,
-                              user_message.message_id,
-                              list(context['index']),
-                              writer
-                              )
+    background_tasks.add_task(
+        log_assistant_message,
+        assistant_message,
+        user_message.message_id,
+        list(context["index"]),
+        writer,
+    )
     print("returning...")
-    return Response(session_id=question.session_id,
-                    conversation_id=question.conversation_id,
-                    content=llm_response.content,
-                    message_history=question.message_history + [user_message.message_id, assistant_message.message_id],
-                    graph_data=context)
+    return Response(
+        session_id=question.session_id,
+        conversation_id=question.conversation_id,
+        content=llm_response.content,
+        message_history=question.message_history
+        + [user_message.message_id, assistant_message.message_id],
+        graph_data=context,
+    )
 
 
 def log_user_message(
-        message: UserMessage,
-        message_history: List[str],
-        llm_type: str,
-        temperature: float,
-        writer: GraphWriter,
+    message: UserMessage,
+    message_history: List[str],
+    llm_type: str,
+    temperature: float,
+    writer: GraphWriter,
 ) -> None:
     """
     Log a user message in the graph. If this is the first message, then also log the conversation and session.
@@ -196,10 +228,10 @@ def log_user_message(
 
 
 def log_assistant_message(
-        message: AssistantMessage,
-        previous_message_id: str,
-        context_ids: List[str],
-        writer: GraphWriter,
+    message: AssistantMessage,
+    previous_message_id: str,
+    context_ids: List[str],
+    writer: GraphWriter,
 ) -> None:
     """
     Log an assistant message in the graph.
@@ -213,12 +245,16 @@ def log_assistant_message(
 
 
 @router.get("/graph-llm/{conversation_id}", response_model=GraphResponse)
-async def get_graph_response(conversation_id: str, reader: GraphReader = Depends(get_reader)) -> GraphResponse:
+async def get_graph_response(
+    conversation_id: str, reader: GraphReader = Depends(get_reader)
+) -> GraphResponse:
     """
     Endpoint to fetch detailed graph data and conversation history for a given conversation ID.
     """
     try:
-        conversation_history_data: List[Tuple] = reader.retrieve_conversation_history(conversation_id)
+        conversation_history_data: List[Tuple] = reader.retrieve_conversation_history(
+            conversation_id
+        )
 
         if not conversation_history_data:
             raise HTTPException(status_code=404, detail="Conversation not found")
@@ -226,15 +262,21 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         conversation_entries: List[ConversationEntry] = []
 
         for document_path, message_path in conversation_history_data:
-            assistant_nodes_doc_path, document_nodes = parse_document_path(document_path)
-            assistant_nodes_message_path, message_nodes, conversation_nodes = parse_message_path(message_path)
+            assistant_nodes_doc_path, document_nodes = parse_document_path(
+                document_path
+            )
+            (
+                assistant_nodes_message_path,
+                message_nodes,
+                conversation_nodes,
+            ) = parse_message_path(message_path)
 
             entry = ConversationEntry(
                 assistant_nodes_document_path=assistant_nodes_doc_path,
                 document_nodes=document_nodes,
                 conversation_nodes=conversation_nodes,
                 message_nodes=message_nodes,
-                assistant_nodes_message_path=assistant_nodes_message_path
+                assistant_nodes_message_path=assistant_nodes_message_path,
             )
 
             conversation_entries.append(entry)
@@ -242,11 +284,13 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         return GraphResponse(conversation_entries=conversation_entries)
 
     except Exception as e:
-        print(f'error retrieving the conversation history for {conversation_id}: {e}')
+        print(f"error retrieving the conversation history for {conversation_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def parse_document_path(document_path: Path) -> Tuple[List[AssistantNode], List[DocumentNode]]:
+def parse_document_path(
+    document_path: Path,
+) -> Tuple[List[AssistantNode], List[DocumentNode]]:
     assistant_nodes = []
     document_nodes = []
 
@@ -261,22 +305,28 @@ def parse_document_path(document_path: Path) -> Tuple[List[AssistantNode], List[
                 document_nodes.append(encoded_node)
         return assistant_nodes, document_nodes
     else:
-        raise TypeError(f'Expected a Path object but got {type(document_path).__name__}')
+        raise TypeError(
+            f"Expected a Path object but got {type(document_path).__name__}"
+        )
 
 
 DocumentPathNodeTypes = Union[AssistantNode, DocumentNode]
 
 
 def encode_document_path_node(node: Node) -> DocumentPathNodeTypes:
-    if 'Assistant' in node.labels:
+    if "Assistant" in node.labels:
         return create_assistant_node(node)
-    elif 'Document' in node.labels:
+    elif "Document" in node.labels:
         return create_document_node(node)
     else:
-        raise ValueError(f'Unknown Node Label(s):{node.labels}, unable to map to known types in a message path')
+        raise ValueError(
+            f"Unknown Node Label(s):{node.labels}, unable to map to known types in a message path"
+        )
 
 
-def parse_message_path(message_path: Path) -> Tuple[List[AssistantNode], List[MessageNode], List[ConversationNode]]:
+def parse_message_path(
+    message_path: Path,
+) -> Tuple[List[AssistantNode], List[MessageNode], List[ConversationNode]]:
     assistant_nodes = []
     message_nodes = []
     conversation_nodes = []
@@ -295,7 +345,9 @@ def parse_message_path(message_path: Path) -> Tuple[List[AssistantNode], List[Me
         return assistant_nodes, message_nodes, conversation_nodes
 
     else:
-        raise TypeError(f"Expected a Path object, but got {type(message_path).__name__}")
+        raise TypeError(
+            f"Expected a Path object, but got {type(message_path).__name__}"
+        )
 
 
 MessagePathNodeTypes = Union[AssistantNode, MessageNode, ConversationNode]
@@ -303,34 +355,44 @@ MessagePathNodeTypes = Union[AssistantNode, MessageNode, ConversationNode]
 
 def encode_message_path_node(node: Node) -> MessagePathNodeTypes:
     print(f"Processing node with labels: {node.labels}")
-    if 'Assistant' in node.labels:
+    if "Assistant" in node.labels:
         return create_assistant_node(node)
-    elif 'Message' in node.labels:
+    elif "Message" in node.labels:
         return create_message_node(node)
-    elif 'Conversation' in node.labels:
+    elif "Conversation" in node.labels:
         return create_conversation_node(node)
     else:
-        raise ValueError(f"Unknown Node Label(s):{node.labels}, unable to map to known types in a message path")
+        raise ValueError(
+            f"Unknown Node Label(s):{node.labels}, unable to map to known types in a message path"
+        )
 
 
-#id, numDocs, postTime, prompt, public, resultingSummary, role, vectorIndexSearch
+# id, numDocs, postTime, prompt, public, resultingSummary, role, vectorIndexSearch
 def create_assistant_node(data: Node) -> AssistantNode:
-    required_fields = ["id", "numDocs", "postTime", "prompt", "public", "resultingSummary", "role",
-                       "vectorIndexSearch"]
+    required_fields = [
+        "id",
+        "numDocs",
+        "postTime",
+        "prompt",
+        "public",
+        "resultingSummary",
+        "role",
+        "vectorIndexSearch",
+    ]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
     return AssistantNode(
-        id=data['id'],
-        numDocs=data['numDocs'],
-        postTime=data['postTime'].to_native(),
-        prompt=data['prompt'],
-        public=data['public'],
-        resultingSummary=data['resultingSummary'],
-        role=data['role'],
-        vectorIndexSearch=data['vectorIndexSearch']
+        id=data["id"],
+        numDocs=data["numDocs"],
+        postTime=data["postTime"].to_native(),
+        prompt=data["prompt"],
+        public=data["public"],
+        resultingSummary=data["resultingSummary"],
+        role=data["role"],
+        vectorIndexSearch=data["vectorIndexSearch"],
     )
 
 
@@ -342,48 +404,62 @@ def create_message_node(data: Node) -> MessageNode:
         raise ValueError(f"Missing fields: {missing_fields}")
 
     return MessageNode(
-        content=data['content'],
-        embedding=data['embedding'],
-        id=data['id'],
-        postTime=data['postTime'].to_native(),
-        role=data['role']
+        content=data["content"],
+        embedding=data["embedding"],
+        id=data["id"],
+        postTime=data["postTime"].to_native(),
+        role=data["role"],
     )
 
 
 def create_conversation_node(data: Node) -> ConversationNode:
-    required_fields = ["BadMessagesCount", "GoodMessagesCount", "conversation_length", "id", "llm"]
+    required_fields = [
+        "BadMessagesCount",
+        "GoodMessagesCount",
+        "conversation_length",
+        "id",
+        "llm",
+    ]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
     return ConversationNode(
-        BadMessagesCount=data['BadMessagesCount'],
-        GoodMessagesCount=data['GoodMessagesCount'],
-        conversation_length=data['conversation_length'],
-        id=data['id'],
-        llm=data['llm'],
-        temperature=data['temperature']
+        BadMessagesCount=data["BadMessagesCount"],
+        GoodMessagesCount=data["GoodMessagesCount"],
+        conversation_length=data["conversation_length"],
+        id=data["id"],
+        llm=data["llm"],
+        temperature=data["temperature"],
     )
 
 
 def create_document_node(data: Node) -> DocumentNode:
-    required_fields = ["community", "contextCount", "embedding", "fastRP_similarity", "index", "pageRank", "text",
-                       "url"]
+    required_fields = [
+        "community",
+        "contextCount",
+        "embedding",
+        "fastRP_similarity",
+        "index",
+        "pageRank",
+        "text",
+        "url",
+    ]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
     return DocumentNode(
-        community=data['community'],
-        contextCount=data['contextCount'],
-        embedding=data['embedding'],
-        fastRP_similarity=data['fastRP_similarity'],
-        index=data['index'],
-        pageRank=data['pageRank'],
-        text=data['text'],
-        url=data['url']
+        community=data["community"],
+        contextCount=data["contextCount"],
+        embedding=data["embedding"],
+        fastRP_similarity=data["fastRP_similarity"],
+        index=data["index"],
+        pageRank=data["pageRank"],
+        text=data["text"],
+        url=data["url"],
     )
 
 
@@ -395,6 +471,6 @@ def create_assistant_relationship(data: dict) -> AssistantRelationship:
         raise ValueError(f"Missing fields: {missing_fields}")
 
     return AssistantRelationship(
-        start_node=create_assistant_node(data['start_node']),
-        end_node=create_document_node(data['end_node'])
+        start_node=create_assistant_node(data["start_node"]),
+        end_node=create_document_node(data["end_node"]),
     )

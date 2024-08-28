@@ -5,7 +5,6 @@ from resources.prompts.prompts import prompt_no_context_template, prompt_templat
 
 
 class TestAssistantMessage(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls) -> None:
         pass
