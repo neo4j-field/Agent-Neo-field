@@ -61,10 +61,6 @@ class GraphWriter(Communicator):
         Appropriate relationships are created.
         """
 
-        print("logging new conversation...")
-
-        print("convId: ", message.conversation_id)
-
         def log(tx):
             tx.run(
                 """
@@ -107,9 +103,10 @@ class GraphWriter(Communicator):
         """
         This method logs a new user message to the neo4j database and
         creates appropriate relationships.
+        :param message:
+        :param previous_message_id:
+        :return:
         """
-
-        print("logging user message...")
 
         def log(tx):
             tx.run(
@@ -200,13 +197,13 @@ class GraphWriter(Communicator):
             print(err)
             session.close()
 
-    def rate_message(self, rating: Rating):
+    def rate_message(self, rating: Rating) -> None:
         """
         Rate an LLM message given a rating and uploads
         the rating to the database.
+        :param rating:
+        :return:
         """
-
-        print("rating llm message...")
 
         def rate(tx):
             tx.run(
@@ -229,10 +226,11 @@ class GraphWriter(Communicator):
             session.close()
 
     def delete_by_id(self, ids: List[str]) -> None:
-        """
+        '''
         Delete nodes and relationships based on provided ids.
-        """
-
+        :param ids:
+        :return:
+        '''
         def delete_nodes_and_rels(tx):
             tx.run(
                 """
@@ -276,6 +274,9 @@ class GraphWriter(Communicator):
     def write_dummy_node(self, id: str, label: str) -> None:
         """
         Create a dummy node for testing.
+        :param id:
+        :param label:
+        :return:
         """
 
         def write_node(tx):
@@ -303,7 +304,7 @@ class GraphReader(Communicator):
 
     def retrieve_context_documents(self, question_embedding: List[float],
                                    number_of_context_documents: int = 10) -> pd.DataFrame:
-        '''
+        """
         This function takes the user question and creates an embedding of it
         using a vertexai model.
         Cosine similarity is ran on the embedding against the embeddings in the
@@ -311,7 +312,10 @@ class GraphReader(Communicator):
         the context.
         The top n documents with their URLs are returned as context.
 
-        '''
+        :param question_embedding:
+        :param number_of_context_documents:
+        :return:
+        """
 
         @timeit
         def neo4j_vector_index_search(tx):
@@ -337,8 +341,7 @@ class GraphReader(Communicator):
     def retrieve_context_documents_by_topic(self,
                                             question_embedding: List[float],
                                             number_of_topics: int = 3,
-                                            documents_per_topic: int = 4,
-                                            ) -> pd.DataFrame:
+                                            documents_per_topic: int = 4,):
         """
         This function takes the user question and creates an embedding of it
         using a vertexai model.
@@ -346,6 +349,11 @@ class GraphReader(Communicator):
         Neo4j database to topic summaries most similar to the question.
         The most relevant documents for each topic are retrieved.
         The top n documents with their URLs are returned as context.
+
+        :param question_embedding:
+        :param number_of_topics:
+        :param documents_per_topic:
+        :return:
         """
 
         @timeit
@@ -388,7 +396,7 @@ class GraphReader(Communicator):
         """
 
         @timeit
-        def retrieve_conversation(tx):
+        def retrieve_conversation(tx) -> neo4j.EagerResult:
             return tx.run(
                 """
                 MATCH (c:Conversation {id: $conversation_id})
@@ -420,6 +428,9 @@ class GraphReader(Communicator):
     def match_by_id(self, ids: List[str]) -> int:
         """
         Match nodes based on provided ids and return count.
+
+        :param ids:
+        :return:
         """
 
         @timeit
@@ -467,7 +478,9 @@ class GraphReader(Communicator):
 
     def get_message_rating(self, assistant_message_id: str) -> str:
         """
-        Retrieve a message rating.
+        rate messages
+        :param assistant_message_id:
+        :return:
         """
 
         def get(tx):
