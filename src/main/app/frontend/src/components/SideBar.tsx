@@ -36,7 +36,7 @@ function Sidebar({ conversationId }: { conversationId: string }) {
 
   const fetchConversationData = useCallback(async () => {
     try {
-        const response = await fetch(`/graph-llm/${conversationId}`);
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_DEV_ADDRESS}/graph-llm/${conversationId}`);
         console.log('response:', response);
 
         if (!response.ok) {

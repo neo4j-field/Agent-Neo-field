@@ -2,28 +2,16 @@ from datetime import datetime
 from typing import List
 from pydantic import BaseModel, Field, validator
 
-# todo
-'''
-The Database schema needs to be normalized. 
-
-There are a bunch of different permutations of properties on nodes with the same label set.
-
-There are also different permutations of property types attached to them,
-one property on one node might be a datetime where the same property on another node is a string.
-'''
-
 
 class AssistantNode(BaseModel):
-    content: str = Field(description="Content of the assistant's response")
-    fastRP_similarity: List[float] = Field(description="FastRP similarity scores")
     id: str = Field(description="ID of the node")
     numDocs: int = Field(description="Number of documents associated")
     postTime: datetime = Field(description="Post time of the response")
-    rating: str = Field(description="Rating of the response")
-    responseCommunity: int = Field(description="Response community ID")
+    prompt: str = Field(description="Prompt that led to this response")
+    public: bool = Field(description="Whether the node is public or not")
+    resultingSummary: str = Field(description="Summary resulting from the assistant's response")
     role: str = Field(description="Role of the node")
-    similarityPR: float = Field(description="Similarity PageRank score")
-    vectorIndexSearch: bool = Field(description="vector index")
+    vectorIndexSearch: bool = Field(description="Whether vector index search was used")
 
 
 class ConversationNode(BaseModel):
@@ -87,5 +75,3 @@ class ConversationEntry(BaseModel):
     conversation_nodes: List[ConversationNode]
     message_nodes: List[MessageNode]
     assistant_nodes_message_path: List[AssistantNode]
-
-

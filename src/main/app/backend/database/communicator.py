@@ -161,6 +161,7 @@ class GraphWriter(Communicator):
             tx.run(
                 """
             MATCH (pm:Message {id: $prevMessId})
+            
             MERGE (m:Message {id: $messId})
             SET m.content = $content,
                 m.role = $role, 
@@ -169,10 +170,11 @@ class GraphWriter(Communicator):
                 m.vectorIndexSearch = true,
                 m.prompt = $prompt,
                 m.public = toBoolean($public),
-                m.resultingSummary = $resultingSummary
-                   
-            MERGE (pm)-[:NEXT]->(m)
+                m.resultingSummary = resultingSummary,
+                m.test = 'true'
 
+            MERGE (pm)-[:NEXT]->(m)
+            
             WITH m
             UNWIND $contextIndices as contextIdx
             MATCH (d:Document)

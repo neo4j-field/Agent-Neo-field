@@ -1,19 +1,21 @@
 import {FetchOptions} from "../types/types";
 
-const apiBaseURL = 'https://agent-neo-backend-qaiojvs3da-uc.a.run.app';
+
 
 export const fetchWithAuth = async ({ endpoint, ...options }: FetchOptions): Promise<any> => {
-  const idToken = localStorage.getItem('id_token'); // Retrieve the JWT token from localStorage
+  const idToken = localStorage.getItem('id_token');
 
   const headers = new Headers(options.headers || {});
   headers.append("Authorization", idToken ? `Bearer ${idToken}` : "");
-
-  const response = await fetch(`${apiBaseURL}${endpoint}`, {
+  console.log('backend address' + import.meta.env.VITE_BACKEND_DEV_ADDRESS);
+  const response = await fetch(`${import.meta.env.VITE_BACKEND_DEV_ADDRESS}/llm`, {
     ...options,
     headers,
   });
 
   const responseData = await response.json();
+
+
   if (!response.ok) {
     throw new Error(responseData.message || "Server error");
   }

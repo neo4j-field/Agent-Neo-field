@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "agent-neo-backend"
+version = "0.1.0"
+description = "Backend services for Agent Neo, a GraphRAG application."
+authors = ["Alex Gilmore", "Alexander Fournier", "Daniel Bukowski", "Nathan Smith", "Eric Monk"]
+license = "MIT"
+readme = "README.md"
+keywords = ["backend", "fastapi", "python"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "0.108.0"
+google-cloud = "0.34.0"
+google-cloud-aiplatform = "1.43.0"
+google-cloud-secret-manager = "2.17.0"
+langchain = "0.1.10"
+langchain-community = "0.0.25"
+langchain-google-vertexai = "0.0.5"
+langchain-openai = "0.0.8"
+neo4j = "5.20.0"
+openai = "1.13.3"
+pandas = "2.0.3"
+pydantic = "2.7.0"
+uvicorn = "0.25.0"
+python-dotenv = "1.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+ruff = "^0.3.0"
+
+[tool.ruff]
+target-version = "py310"
+show-fixes = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

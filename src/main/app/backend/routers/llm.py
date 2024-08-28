@@ -11,9 +11,11 @@ from objects.question import Question
 from objects.response import Response, GraphResponse
 from objects.types import UserMessage, AssistantMessage
 from resources.prompts import get_prompt_no_context_template, get_prompt_template, get_prompt_no_context
-from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol
+from tools.embedding import TextEmbeddingService, EmbeddingServiceProtocol, FakeEmbeddingService
 from tools.llm import LLM
-from tools.secret_manager import EnvSecretManager
+from tools.secret_manager import EnvSecretManager, GoogleSecretManager
+import os
+from tools.secret_manager import SecretManager
 
 PUBLIC = True
 
@@ -28,7 +30,7 @@ def get_prompt(context: List[str]) -> str:
     return get_prompt_no_context_template() if len(context) < 1 else get_prompt_template()
 
 
-def get_reader():
+def get_reader() -> GraphReader:
     reader = GraphReader(secret_manager=secret_manager)
     try:
         yield reader
@@ -36,7 +38,7 @@ def get_reader():
         reader.close_driver()
 
 
-def get_writer():
+def get_writer() -> GraphWriter:
     writer = GraphWriter(secret_manager=secret_manager)
     try:
         yield writer
@@ -44,8 +46,23 @@ def get_writer():
         writer.close_driver()
 
 
-def get_embedding_service() -> EmbeddingServiceProtocol:
-    return TextEmbeddingService()
+def get_secret_manager() -> SecretManager:
+    if os.getenv('USE_GOOGLE_SECRET_MANAGER') == 'true':
+        project_id = os.getenv('GOOGLE_PROJECT_ID')
+        return GoogleSecretManager(project_id=project_id)
+    else:
+        env_path = os.getenv('ENV_PATH', '.env')
+        return EnvSecretManager(env_path=env_path)
+
+
+def get_embedding_service(sm: SecretManager) -> EmbeddingServiceProtocol:
+    local_dev = sm.access_secret_version('LOCAL_DEVELOPMENT')
+    is_local_dev = local_dev.lower() in ('true', '1', 't', 'y', 'yes')
+
+    if is_local_dev:
+        return FakeEmbeddingService()
+    else:
+        return TextEmbeddingService()
 
 
 def get_llm(question: Question) -> LLM:
@@ -57,8 +74,6 @@ def get_default() -> str:
     return "Agent Neo backend is live."
 
 
-# Todo: Implement bearer tokens in the backend?
-# right now anyone with the url and the endpoints can hit them
 @router.post("/llm_dummy", response_model=Response)
 async def get_response(question: Question) -> Response:
     """
@@ -102,7 +117,7 @@ async def get_response(
         background_tasks: BackgroundTasks,
         reader: GraphReader = Depends(get_reader),
         writer: GraphWriter = Depends(get_writer),
-        embedding_service: EmbeddingServiceProtocol = Depends(get_embedding_service),
+        embedding_service: EmbeddingServiceProtocol = Depends(lambda: get_embedding_service(get_secret_manager())),
         llm: LLM = Depends(get_llm),
 ) -> Response:
     """
@@ -111,6 +126,7 @@ async def get_response(
 
     question_embedding = embedding_service.get_embedding(text=question.question)
     print("got embedding...")
+
     context = reader.retrieve_context_documents(
         question_embedding=question_embedding,
         number_of_context_documents=question.number_of_documents,
@@ -226,11 +242,11 @@ async def get_graph_response(conversation_id: str, reader: GraphReader = Depends
         return GraphResponse(conversation_entries=conversation_entries)
 
     except Exception as e:
+        print(f'error retrieving the conversation history for {conversation_id}: {e}')
         raise HTTPException(status_code=500, detail=str(e))
 
 
 def parse_document_path(document_path: Path) -> Tuple[List[AssistantNode], List[DocumentNode]]:
-
     assistant_nodes = []
     document_nodes = []
 
@@ -286,6 +302,7 @@ MessagePathNodeTypes = Union[AssistantNode, MessageNode, ConversationNode]
 
 
 def encode_message_path_node(node: Node) -> MessagePathNodeTypes:
+    print(f"Processing node with labels: {node.labels}")
     if 'Assistant' in node.labels:
         return create_assistant_node(node)
     elif 'Message' in node.labels:
@@ -296,24 +313,23 @@ def encode_message_path_node(node: Node) -> MessagePathNodeTypes:
         raise ValueError(f"Unknown Node Label(s):{node.labels}, unable to map to known types in a message path")
 
 
+#id, numDocs, postTime, prompt, public, resultingSummary, role, vectorIndexSearch
 def create_assistant_node(data: Node) -> AssistantNode:
-    required_fields = ["content", "fastRP_similarity", "id", "numDocs", "postTime", "rating", "responseCommunity",
-                       "role", "similarityPR", "vectorIndexSearch"]
+    required_fields = ["id", "numDocs", "postTime", "prompt", "public", "resultingSummary", "role",
+                       "vectorIndexSearch"]
     missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
         raise ValueError(f"Missing fields: {missing_fields}")
 
     return AssistantNode(
-        content=data['content'],
-        fastRP_similarity=data['fastRP_similarity'],
         id=data['id'],
         numDocs=data['numDocs'],
         postTime=data['postTime'].to_native(),
-        rating=data['rating'],
-        responseCommunity=data['responseCommunity'],
+        prompt=data['prompt'],
+        public=data['public'],
+        resultingSummary=data['resultingSummary'],
         role=data['role'],
-        similarityPR=data['similarityPR'],
         vectorIndexSearch=data['vectorIndexSearch']
     )
 
