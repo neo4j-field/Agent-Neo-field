@@ -8,8 +8,6 @@ if __name__ == "__main__":
 
     service_account_info = secret_manager.access_secret_version("GCP_SERVICE_ACCOUNT")
 
-    credentials = service_account.Credentials.from_service_account_info(
-        service_account_info
-    )
+    credentials = service_account.Credentials.from_service_account_info(service_account_info)
 
     gcp_client = storage.Client(credentials=credentials)

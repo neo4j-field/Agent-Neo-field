@@ -18,9 +18,7 @@ if __name__ == "__main__":
 
     fetcher = GitHubFetcher(storage_client=gcp_client, secret_client=secret_manager)
 
-    repos = fetcher.http_get_repos_by_patterns(
-        org_name="neo4j", repo_patterns=repo_patterns
-    )
+    repos = fetcher.http_get_repos_by_patterns(org_name="neo4j", repo_patterns=repo_patterns)
 
     bucket = secret_manager.access_secret_version("GIT_REPOSITORIES")
 

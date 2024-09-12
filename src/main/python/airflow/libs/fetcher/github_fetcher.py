@@ -37,16 +37,10 @@ class GitHubFetcher(BaseFetcher):
     def fetch(self, *args, **kwargs) -> Any:
         pass
 
-    def http_get_repos_by_patterns(
-        self, org_name: str, repo_patterns: List[str]
-    ) -> List[str]:
+    def http_get_repos_by_patterns(self, org_name: str, repo_patterns: List[str]) -> List[str]:
         all_repos = self.http_list_github_repos(org_name=org_name)
         compiled_patterns = [re.compile(pattern) for pattern in repo_patterns]
-        matched_repos = [
-            repo
-            for repo in all_repos
-            if any(pattern.search(repo) for pattern in compiled_patterns)
-        ]
+        matched_repos = [repo for repo in all_repos if any(pattern.search(repo) for pattern in compiled_patterns)]
         return matched_repos
 
     def http_list_github_repos(self, org_name: str) -> Dict[str, str]:
@@ -90,13 +84,9 @@ class GitHubFetcher(BaseFetcher):
         blob.upload_from_filename(file_path)
         print(f"Uploaded {file_path} to gs://{bucket_name}/{blob_name}")
 
-    def get_files_from_git_repos(
-        self, org_name: str, repo_pattern: List[str]
-    ) -> Dict[str, str]:
+    def get_files_from_git_repos(self, org_name: str, repo_pattern: List[str]) -> Dict[str, str]:
         file_contents = {}
-        repo_urls = self.http_get_repos_by_patterns(
-            org_name=org_name, repo_patterns=repo_pattern
-        )
+        repo_urls = self.http_get_repos_by_patterns(org_name=org_name, repo_patterns=repo_pattern)
 
         repo_names = [repo_url.split("/")[-1].split(".")[0] for repo_url in repo_urls]
 
@@ -108,16 +98,12 @@ class GitHubFetcher(BaseFetcher):
                     file_contents[f"{repo_name}/{file_path}"] = file_data
         return file_contents
 
-    def http_get_repository_files(
-        self, org_name: str, repo_name: str
-    ) -> Dict[str, str]:
+    def http_get_repository_files(self, org_name: str, repo_name: str) -> Dict[str, str]:
         api_base_url = f"https://api.github.com/repos/{org_name}/{repo_name}/contents/"
         file_paths = self.recursive_traverse_file_hierarchy(api_base_url)
         return file_paths
 
-    def recursive_traverse_file_hierarchy(
-        self, url: str, path: str = ""
-    ) -> Dict[str, str]:
+    def recursive_traverse_file_hierarchy(self, url: str, path: str = "") -> Dict[str, str]:
         headers = {"Authorization": f"token {self.github_token}"}
         response = requests.get(url + path, headers=headers)
         items = response.json()
@@ -128,9 +114,7 @@ class GitHubFetcher(BaseFetcher):
                 if item["type"] == "file":
                     file_paths[item["path"]] = item["url"]
                 elif item["type"] == "dir":
-                    file_paths.update(
-                        self.recursive_traverse_file_hierarchy(url, item["path"])
-                    )
+                    file_paths.update(self.recursive_traverse_file_hierarchy(url, item["path"]))
         return file_paths
 
     def _get_file_content(self, file_url):

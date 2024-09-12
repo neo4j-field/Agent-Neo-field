@@ -13,12 +13,8 @@ class VertexAIEmbedder(CodeEmbeddingService):
         self.project_id = vertex_ai_config["project_id"]
         self.location = vertex_ai_config["location"]
         self.endpoint_id = vertex_ai_config["endpoint_id"]
-        self.client_options = {
-            "api_endpoint": f"{self.location}-aiplatform.googleapis.com"
-        }
-        self.client = aiplatform.gapic.PredictionServiceClient(
-            client_options=self.client_options
-        )
+        self.client_options = {"api_endpoint": f"{self.location}-aiplatform.googleapis.com"}
+        self.client = aiplatform.gapic.PredictionServiceClient(client_options=self.client_options)
 
     def embed_code(self, code_chunks: List[str]) -> List[Dict[str, Any]]:
         embeddings = []
@@ -34,9 +30,7 @@ class VertexAIEmbedder(CodeEmbeddingService):
             response = self.client.predict(endpoint=endpoint, instances=instances)
 
             for prediction in response.predictions:
-                embedding = prediction.get(
-                    "embedding"
-                )  # Adjust based on the actual response structure
+                embedding = prediction.get("embedding")  # Adjust based on the actual response structure
                 embeddings.append({"code": chunk, "embedding": embedding})
 
         return embeddings

@@ -11,8 +11,7 @@ class TestGithubUploadReal(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         env_file_path = (
-            "/Users/alexanderfournier/Downloads/Agent-Neo-field/"
-            "src/main/python/airflow/tasks/gcpfetch/env.json"
+            "/Users/alexanderfournier/Downloads/Agent-Neo-field/" "src/main/python/airflow/tasks/gcpfetch/env.json"
         )
 
         with open(env_file_path, "r") as f:
@@ -44,15 +43,11 @@ class TestGithubUploadReal(unittest.TestCase):
 
         storage_client = storage.Client.from_service_account_info(service_account_info)
 
-        sm = SecretManager(
-            service_account_info=self.service_account_config, project_id=self.project_id
-        )
+        sm = SecretManager(service_account_info=self.service_account_config, project_id=self.project_id)
 
         git_fetcher = GitHubFetcher(secret_client=sm, storage_client=storage_client)
 
-        repos = git_fetcher.http_get_repos_by_patterns(
-            org_name="Neo4j", repo_patterns=self.repo_patterns
-        )
+        repos = git_fetcher.http_get_repos_by_patterns(org_name="Neo4j", repo_patterns=self.repo_patterns)
 
         for repo in repos:
             git_fetcher.clone_and_upload_repo(repo, self.bucket_name)

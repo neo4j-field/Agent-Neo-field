@@ -7,8 +7,7 @@ class TestGitConnectionReal(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         env_file_path = (
-            "/Users/alexanderfournier/Downloads/Agent-Neo-field/"
-            "src/main/python/airflow/tasks/gcpfetch/env.json"
+            "/Users/alexanderfournier/Downloads/Agent-Neo-field/" "src/main/python/airflow/tasks/gcpfetch/env.json"
         )
 
         with open(env_file_path, "r") as f:

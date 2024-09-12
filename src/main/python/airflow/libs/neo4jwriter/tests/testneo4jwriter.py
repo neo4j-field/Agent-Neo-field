@@ -29,20 +29,11 @@ class TestNeo4jWriter(unittest.TestCase):
         params = pd.DataFrame(
             {
                 "index": range(num_rows),
-                "chunk_text": [
-                    generate_random_string(random.randint(5, 15))
-                    for _ in range(num_rows)
-                ],
+                "chunk_text": [generate_random_string(random.randint(5, 15)) for _ in range(num_rows)],
                 "chunk_len": [random.randint(1, 500) for _ in range(num_rows)],
                 "chunk_url": [generate_random_url() for _ in range(num_rows)],
-                "source_type": [
-                    random.choice(["Web", "Book", "Journal", "Article"])
-                    for _ in range(num_rows)
-                ],
-                "topic": [
-                    generate_random_string(random.randint(3, 8))
-                    for _ in range(num_rows)
-                ],
+                "source_type": [random.choice(["Web", "Book", "Journal", "Article"]) for _ in range(num_rows)],
+                "topic": [generate_random_string(random.randint(3, 8)) for _ in range(num_rows)],
                 "embedding": [generate_random_embedding() for _ in range(num_rows)],
             }
         ).to_dict("records")

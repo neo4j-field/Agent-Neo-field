@@ -64,11 +64,12 @@ ignore_missing_imports = true
 
 [mypy-vertexai]
 ignore_missing_imports = true
+
 [tool.ruff]
 target-version = "py311"
 show-fixes = true
 exclude = [
-    "../python/",
+    "./python/",
 ]
 
 [tool.ruff.lint]

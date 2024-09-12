@@ -8,17 +8,14 @@ class TestSecretManagerReal(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         env_file_path = (
-            "/Users/alexanderfournier/Downloads"
-            "/Agent-Neo-field/src/main/python/airflow/tasks/gcpfetch/env.json"
+            "/Users/alexanderfournier/Downloads" "/Agent-Neo-field/src/main/python/airflow/tasks/gcpfetch/env.json"
         )
 
         with open(env_file_path, "r") as f:
             config = json.load(f)
 
         cls.gcp_sitemaps_bucket = config.get("GCP_SITEMAPS_BUCKET")
-        cls.gcp_practitioners_guide_sites_bucket = config.get(
-            "GCP_PRACTITIONERS_GUIDE_SITES_BUCKET"
-        )
+        cls.gcp_practitioners_guide_sites_bucket = config.get("GCP_PRACTITIONERS_GUIDE_SITES_BUCKET")
         cls.gcp_other_articles_bucket = config.get("GCP_OTHER_ARTICLES_BUCKET")
         cls.gcp_processed_docs = config.get("GCP_PROCESSED_DOCS")
         cls.project_id = config.get("GCP_PROJECT_ID")
@@ -39,9 +36,7 @@ class TestSecretManagerReal(unittest.TestCase):
     def test_access_secret_version(self):
         secret_id = "GITHUB_ACCESS_TOKEN"
 
-        sm = SecretManager(
-            service_account_info=self.service_account_config, project_id=self.project_id
-        )
+        sm = SecretManager(service_account_info=self.service_account_config, project_id=self.project_id)
         secret = sm.access_secret_version(secret_id)
 
         print(secret)

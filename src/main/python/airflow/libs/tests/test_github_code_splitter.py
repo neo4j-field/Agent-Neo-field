@@ -7,8 +7,7 @@ class TestGithubCodeSplitter(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         sample_python_file = (
-            "/Users/alexanderfournier/Downloads/"
-            "Agent-Neo-field/src/main/python/airflow/libs/fetcher/gcp_fetcher.py"
+            "/Users/alexanderfournier/Downloads/" "Agent-Neo-field/src/main/python/airflow/libs/fetcher/gcp_fetcher.py"
         )
 
         with open(sample_python_file, "r") as f:

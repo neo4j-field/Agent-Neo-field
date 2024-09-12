@@ -20,12 +20,8 @@ class SecretManager:
                 # Load the JSON content
                 service_account_info = json.loads(decoded_bytes.decode("utf-8"))
 
-            credentials = service_account.Credentials.from_service_account_info(
-                service_account_info
-            )
-            self.client = secretmanager.SecretManagerServiceClient(
-                credentials=credentials
-            )
+            credentials = service_account.Credentials.from_service_account_info(service_account_info)
+            self.client = secretmanager.SecretManagerServiceClient(credentials=credentials)
         else:
             self.client = secretmanager.SecretManagerServiceClient()
 

@@ -12,8 +12,7 @@ class TestLangChainSplitting(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         env_file_path = (
-            "/Users/alexanderfournier/Downloads/Agent-Neo-field/src/main/python/airflow/tasks/gcpfetch"
-            "/env.json"
+            "/Users/alexanderfournier/Downloads/Agent-Neo-field/src/main/python/airflow/tasks/gcpfetch" "/env.json"
         )
 
         with open(env_file_path, "r") as f:
@@ -35,15 +34,11 @@ class TestLangChainSplitting(unittest.TestCase):
 
         storage_client = storage.Client.from_service_account_info(service_account_info)
 
-        sm = SecretManager(
-            service_account_info=self.service_account_config, project_id=self.project_id
-        )
+        sm = SecretManager(service_account_info=self.service_account_config, project_id=self.project_id)
 
         bucket_name = sm.access_secret_version("GIT_REPOSITORIES")
 
-        splitter = LangchainCodeSplitter(
-            secret_manager=sm, storage_client=storage_client
-        )
+        splitter = LangchainCodeSplitter(secret_manager=sm, storage_client=storage_client)
 
         for doc in splitter.read_from_gcs(bucket_name=bucket_name):
             print(doc)

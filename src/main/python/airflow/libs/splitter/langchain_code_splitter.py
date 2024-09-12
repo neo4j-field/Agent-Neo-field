@@ -54,12 +54,8 @@ class LangchainCodeSplitter(BaseSplitter[List[str], str]):
         if language is None:
             return  # Skip the file if its language is not recognized
 
-        content = (
-            self.storage_client.bucket(bucket_name).blob(file_path).download_as_text()
-        )
-        content_as_list = [
-            content
-        ]  # Keep the entire content as a single string in a list
+        content = self.storage_client.bucket(bucket_name).blob(file_path).download_as_text()
+        content_as_list = [content]  # Keep the entire content as a single string in a list
         for processed_chunk in self.split(content_as_list, language=language, **kwargs):
             yield processed_chunk
 

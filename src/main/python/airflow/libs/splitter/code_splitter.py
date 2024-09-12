@@ -28,9 +28,7 @@ class PythonCodeSplitter(BaseSplitter[str, str]):
         if code:
             self.tree = ast.parse(code)
         if not self.tree:
-            raise ValueError(
-                "No code to split. Provide code in constructor or split method."
-            )
+            raise ValueError("No code to split. Provide code in constructor or split method.")
 
         split_code = []
         for node in ast.walk(self.tree):

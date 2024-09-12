@@ -32,9 +32,7 @@ class GCPFetcher(BaseFetcher):
     def fetch_config(self, secret_name):
         return self._secret_client.access_secret_version(secret_name)
 
-    def fetch(
-        self, bucket_name: Optional[str] = None, *args: Any, **kwargs: Any
-    ) -> Dict[str, Any]:
+    def fetch(self, bucket_name: Optional[str] = None, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         return self.get_sitemap_urls(bucket_name)
 
     def get_sitemap_urls(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
@@ -42,9 +40,7 @@ class GCPFetcher(BaseFetcher):
             bucket_name = os.environ.get("GCP_SITEMAPS_BUCKET")
         return self._read_from_gcp(bucket_name)
 
-    def get_practitioner_guide_md(
-        self, bucket_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_practitioner_guide_md(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
         if bucket_name is None:
             bucket_name = os.environ.get("GCP_PRACTITIONERS_GUIDE_SITES_BUCKET")
         return self._read_from_gcp(bucket_name)
@@ -54,9 +50,7 @@ class GCPFetcher(BaseFetcher):
             bucket_name = os.environ.get("GCP_OTHER_ARTICLES_BUCKET")
         return self._read_from_gcp(bucket_name)
 
-    def _read_from_gcp(
-        self, bucket_name: str, blob_name: Optional[str] = None
-    ) -> Dict[Optional[str], Optional[Any]]:
+    def _read_from_gcp(self, bucket_name: str, blob_name: Optional[str] = None) -> Dict[Optional[str], Optional[Any]]:
         bucket = self._storage_client.get_bucket(bucket_name)
 
         if not blob_name:
@@ -110,9 +104,7 @@ class GCPFetcher(BaseFetcher):
                 result.append(item)
         return result
 
-    def write_to_gcs(
-        self, data: List[str] = None, bucket_name: str = None, file_name: str = None
-    ):
+    def write_to_gcs(self, data: List[str] = None, bucket_name: str = None, file_name: str = None):
         """
         Write data to a file in Google Cloud Storage.
         """
