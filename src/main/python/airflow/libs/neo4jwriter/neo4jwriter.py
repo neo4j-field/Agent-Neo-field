@@ -42,4 +42,4 @@ class Neo4jWriter:
     @staticmethod
     def _batch_parameters(lst: List[Any], batch_size: int) -> Iterator[List[Any]]:
         for i in range(0, len(lst), batch_size):
-            yield lst[i:i + batch_size]
+            yield lst[i : i + batch_size]
