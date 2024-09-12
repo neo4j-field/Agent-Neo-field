@@ -4,7 +4,7 @@ import { AppContextType } from '../types/types';
 import { AppContext } from '../App';
 import {GraphResponse} from "../types/graphtypes";
 
-function Sidebar({ conversationId }: { conversationId: string }) {
+function Sidebar({ conversationId, fetchConversationData }: { conversationId: string, fetchConversationData: () => void }) {
 
   const { settings, setSettings, toggleTheme, theme } = useContext(AppContext) as AppContextType;
   const [conversationData, setConversationData] = useState<GraphResponse | null>(null);
@@ -34,24 +34,7 @@ function Sidebar({ conversationId }: { conversationId: string }) {
     }));
   };
 
-  const fetchConversationData = useCallback(async () => {
-    try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_DEV_ADDRESS}/graph-llm/${conversationId}`);
-        console.log('response:', response);
 
-        if (!response.ok) {
-            throw new Error(`Error fetching data: ${response.statusText}`);
-        }
-
-        const text = await response.text();
-        console.log('raw response', text);
-
-        const data: GraphResponse = JSON.parse(text);
-        setConversationData(data);
-    } catch (error) {
-        console.error('Failed to fetch conversation data:', error);
-    }
-}, [conversationId]);
 
 
 

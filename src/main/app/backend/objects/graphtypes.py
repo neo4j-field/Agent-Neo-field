@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import List
-from pydantic import BaseModel, Field, validator
+
+from pydantic import BaseModel, Field
 
 
 class AssistantNode(BaseModel):
@@ -75,7 +76,8 @@ class AssistantRelationship(BaseModel):
 
 class ConversationEntry(BaseModel):
     """
-    Contains the conversation entry information. a conversation entry is both the question/response sequence and the referenced RAG documents.
+    Contains the conversation entry information. a conversation entry is both the question/response sequence
+    and the referenced RAG documents.
     """
 
     assistant_nodes_document_path: List[AssistantNode]

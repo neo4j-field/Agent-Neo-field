@@ -1,6 +1,6 @@
 # Agent Neo: A Neo4j Powered Chatbot
 
- 
+
 
 
 
@@ -39,12 +39,10 @@ You can find Agent Neo hosted here: https://chatbot.agent-neo-chat.com/
 
 ## Contributors
 
-- Dan Bukowski 
+- Dan Bukowski
 - Alexander Gilmore
 - Alexander Fournier
 - Roni Das
 - Nathan Smith
 - Morgan Senechal
 - Kumar Subbiah Shunmugathai
-
-

@@ -1,7 +1,5 @@
-
-from typing import List, Dict
 import itertools
-from langchain.schema.document import Document
+from typing import Dict, List
 
 
 class ChunkAnalysis:
@@ -13,28 +11,31 @@ class ChunkAnalysis:
     """
 
     def __init__(self, chunks: Dict[str, List[str]]) -> None:
-
         self.chunks = chunks
 
     @property
     def character_counts(self) -> List[int]:
-        
-        return [len(chunk) for chunk in itertools.chain.from_iterable(self.chunks.values())]
+        return [
+            len(chunk) for chunk in itertools.chain.from_iterable(self.chunks.values())
+        ]
 
     @property
     def word_counts(self) -> List[int]:
-
-        return [len(chunk.split(" ")) for chunk in itertools.chain.from_iterable(self.chunks.values())]
+        return [
+            len(chunk.split(" "))
+            for chunk in itertools.chain.from_iterable(self.chunks.values())
+        ]
 
     @property
     def average_word_lengths(self) -> List[float]:
-
-        word_lists = [chunk.split(" ") for chunk in itertools.chain.from_iterable(self.chunks.values())]
+        word_lists = [
+            chunk.split(" ")
+            for chunk in itertools.chain.from_iterable(self.chunks.values())
+        ]
         return [sum([len(word) for word in words]) / len(words) for words in word_lists]
 
     @property
     def chunk_count(self) -> int:
-
-        return len([chunk for chunk in itertools.chain.from_iterable(self.chunks.values())])
-    
-    
+        return len(
+            [chunk for chunk in itertools.chain.from_iterable(self.chunks.values())]
+        )

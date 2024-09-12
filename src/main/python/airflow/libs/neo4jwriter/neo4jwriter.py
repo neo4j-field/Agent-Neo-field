@@ -1,31 +1,42 @@
-from typing import List, Any, Dict, Iterator, Callable, Union
-import os
+from typing import Any, Dict, Iterator, List, Optional
+
 from neo4j import GraphDatabase, Transaction
 
 
 class Neo4jWriter:
-    def __init__(self, neo4j_url: str = os.environ.get("NEO4J_URI"),
-                 neo4j_user: str = os.environ.get("NEO4J_USER"),
-                 neo4j_password: str = os.environ.get("NEO4J_PASSWORD"),
-                 database: str = os.environ.get("NEO4J_DATABASE")):
-        
+    def __init__(
+        self,
+        neo4j_url: Optional[str] = None,
+        neo4j_user: Optional[str] = None,
+        neo4j_password: Optional[str] = None,
+        database: Optional[str] = None,
+    ):
         self.driver = GraphDatabase.driver(neo4j_url, auth=(neo4j_user, neo4j_password))
         self.database = database
 
     def batch_write(self, cypher_query: str, params: List[Dict[str, Any]], batch_size: int = 10000):
         with self.driver.session(database=self.database) as session:
             for batch in Neo4jWriter._batch_parameters(params, batch_size):
-                packaged_params = {'params': batch}
-                tx_function = lambda tx: self.neo4j_tx_function(tx=tx, cypher_query=cypher_query,params=packaged_params)
+                packaged_params = {"params": batch}
+
+                def tx_function(tx):
+                    return self.neo4j_tx_function(
+                        tx=tx,
+                        params=packaged_params,
+                        cypher_query=cypher_query,
+                    )
+
                 session.execute_write(tx_function)
 
     def neo4j_tx_function(self, tx: Transaction, params: List[Dict[str, Any]], cypher_query: str) -> None:
         tx.run(cypher_query, parameters=params)
 
-
-    def build_indexes(self,index_list = List[str]):
+    def build_indexes(self, index_list=List[str]):
         for index in index_list:
-            tx_function = lambda tx: self.neo4j_tx_function(tx,[],index)
+
+            def tx_function(tx):
+                return self.neo4j_tx_function(tx=tx, params=[])
+
             self.session.execute_write(tx_function)
 
     @staticmethod

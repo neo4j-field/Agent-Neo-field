@@ -6,9 +6,10 @@ authors = ["Alex Gilmore", "Alexander Fournier", "Daniel Bukowski", "Nathan Smit
 license = "MIT"
 readme = "README.md"
 keywords = ["backend", "fastapi", "python"]
+package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 fastapi = "0.108.0"
 google-cloud = "0.34.0"
 google-cloud-aiplatform = "1.43.0"
@@ -24,14 +25,54 @@ pydantic = "2.7.0"
 uvicorn = "0.25.0"
 python-dotenv = "1.0.1"
 
-
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
 ruff = "^0.3.0"
+pre-commit = "^3.8.0"
+isort = "^5.12.0"
+types-requests = "^2.28.0"
+mypy = "^0.971"
 
+[tool.mypy]
+ignore_missing_imports = true
+follow_imports = "skip"
+exclude = "(src/main/python/airflow)"
+
+[mypy-neo4j]
+ignore_missing_imports = true
+
+[mypy-pandas]
+ignore_missing_imports = true
+
+[mypy-pydantic]
+ignore_missing_imports = true
+
+[mypy-google.cloud]
+ignore_missing_imports = true
+
+[mypy-fastapi]
+ignore_missing_imports = true
+
+[mypy-bs4]
+ignore_missing_imports = true
+
+[mypy-openai]
+ignore_missing_imports = true
+
+[mypy-langchain]
+ignore_missing_imports = true
+
+[mypy-vertexai]
+ignore_missing_imports = true
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 show-fixes = true
+exclude = [
+    "../python/",
+]
+
+[tool.ruff.lint]
+per-file-ignores = { "src/main/python/**/*.py" = ["F401", "F841", "F821", "E731"], "__init__.py" = ["F401"] }
 
 [build-system]
 requires = ["poetry-core"]

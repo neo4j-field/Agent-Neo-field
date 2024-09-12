@@ -7,7 +7,6 @@ export const fetchWithAuth = async ({ endpoint, ...options }: FetchOptions): Pro
 
   const headers = new Headers(options.headers || {});
   headers.append("Authorization", idToken ? `Bearer ${idToken}` : "");
-  console.log('backend address' + import.meta.env.VITE_BACKEND_DEV_ADDRESS);
   const response = await fetch(`${import.meta.env.VITE_BACKEND_DEV_ADDRESS}/llm`, {
     ...options,
     headers,

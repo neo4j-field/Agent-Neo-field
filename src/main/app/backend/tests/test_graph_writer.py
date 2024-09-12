@@ -1,15 +1,12 @@
-import os
-import time
 import unittest
+from typing import ClassVar
 
-from dotenv import load_dotenv
-from neo4j import Driver
-
-
-from database.communicator import GraphWriter, GraphReader
-from objects.graphtypes import UserMessage, AssistantMessage
+import pandas as pd
+from database.communicator import GraphReader, GraphWriter
+from objects.question import Question
 from objects.rating import Rating
-from resources.prompts.prompts import prompt_template
+from objects.types import AssistantMessage, UserMessage
+from resources.prompts import get_prompt_template
 from tools.secret_manager import SecretManager
 
 test_ids = {
@@ -22,34 +19,17 @@ test_ids = {
 
 
 class TestGraphWriter(unittest.TestCase):
+    sm: ClassVar[SecretManager]
+    gw: ClassVar[GraphWriter]
+    gr: ClassVar[GraphReader]
+
     @classmethod
     def setUpClass(cls) -> None:
-        assert (
-            os.environ.get("DATABASE_TYPE") == "dev"
-        ), f"Current db is {os.environ.get('DATABASE_TYPE')}. Please change to dev for testing."
-
-        cls.sm = SecretManager()
-        # ensure no test data in database
-        gw = GraphWriter(secret_manager=cls.sm)
-        gw.delete_by_id(list(test_ids.values()))
-        gw.close_driver()
-
-    def test_init(self) -> None:
-        gw = GraphWriter(secret_manager=self.sm)
-        gw.close_driver()
-
-    def test_init_via_env_variables(self) -> None:
-        if not load_dotenv():
-            print("No .env file loaded...")
-
-        gw = GraphWriter()
-        self.assertIsInstance(gw.driver, Driver)
-        gw.close_driver()
+        cls.sm = SecretManager.from_auto()
+        cls.gw = GraphWriter(secret_manager=cls.sm)
+        cls.gr = GraphReader(secret_manager=cls.sm)
 
     def test_new_conversation(self) -> None:
-        gw = GraphWriter(secret_manager=self.sm)
-        gr = GraphReader(secret_manager=self.sm)
-
         user_message = UserMessage(
             session_id=test_ids["session_id"],
             conversation_id=test_ids["conversation_id"],
@@ -58,27 +38,27 @@ class TestGraphWriter(unittest.TestCase):
             embedding=[0.123, 0.456],
             public=False,
         )
-        gw.log_new_conversation(
+        self.gw.log_new_conversation(
             message=user_message, llm_type="gpt-4 8k", temperature=0
         )
 
-        num_nodes = gr.match_by_id(
+        num_nodes = self.gr.match_by_id(
             [
                 test_ids["conversation_id"],
                 test_ids["session_id"],
                 test_ids["user_id"],
             ]
         )
-        gr.close_driver()
+        self.gr.close_driver()
 
-        gw.delete_by_id(
+        self.gw.delete_by_id(
             [
                 test_ids["conversation_id"],
                 test_ids["session_id"],
                 test_ids["user_id"],
             ]
         )
-        gw.close_driver()
+        self.gw.close_driver()
 
         self.assertEqual(num_nodes, 3)
 
@@ -114,13 +94,27 @@ class TestGraphWriter(unittest.TestCase):
         gw.write_dummy_node(id=test_ids["document_id"], label="Document")
         num_nodes = gr.match_by_id([test_ids["user_id"], test_ids["document_id"]])
 
+        # You need to pass a context for get_prompt_template
+        context = pd.DataFrame()
+
+        mock_question = Question(
+            session_id="s-123-test",
+            conversation_id="conv-123-test",
+            question="What is the capital of France?",
+            message_history=["msg-1", "msg-2"],
+            conversation_history="User asked about European capitals.",
+            llm_type="gpt-3",
+            number_of_documents=5,
+            temperature=0.7,
+        )
+
         assistant_message = AssistantMessage(
             session_id=test_ids["session_id"],
             conversation_id=test_ids["conversation_id"],
             message_id=test_ids["assistant_id"],
             content="test content",
             public=False,
-            prompt=prompt_template,
+            prompt=get_prompt_template(mock_question, context),
             number_of_documents=10,
             temperature=0.5,
         )

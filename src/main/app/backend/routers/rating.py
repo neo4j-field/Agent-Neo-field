@@ -1,15 +1,13 @@
-from fastapi import APIRouter, Depends
-
 from database.communicator import GraphWriter
+from fastapi import APIRouter, Depends
 from objects.rating import Rating
-from tools.secret_manager import SecretManager, GoogleSecretManager, EnvSecretManager
+from tools.secret_manager import EnvSecretManager, SecretManager
 
 secret_manager = EnvSecretManager(env_path=".env")
 router = APIRouter()
-writer = GraphWriter(secret_manager)
 
 
-def get_writer():
+def get_writer(sm: SecretManager):
     writer = GraphWriter(secret_manager=sm)
     try:
         yield writer
@@ -19,7 +17,10 @@ def get_writer():
 
 @router.post("/rating")
 async def rate_message(
-    rating: Rating, writer: GraphWriter = Depends(get_writer)
+    rating: Rating,
+    writer: GraphWriter = Depends(
+        lambda: get_writer(EnvSecretManager(env_path=".env"))
+    ),
 ) -> None:
     """
     Write a message rating to the database.

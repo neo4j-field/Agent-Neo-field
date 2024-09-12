@@ -62,4 +62,3 @@ export interface DocumentNode {
 export interface GraphData {
   nodes: DocumentNode[];
 }
-

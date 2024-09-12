@@ -1,37 +1,24 @@
-from typing import List, Tuple, Union
-from uuid import uuid4
-from neo4j.graph import Node, Relationship, Path
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
-from database.communicator import GraphWriter, GraphReader
-
-from objects.graphtypes import (
-    ConversationEntry,
-    AssistantNode,
-    MessageNode,
-    DocumentNode,
-    SessionNode,
-    ConversationNode,
-    MessageRelationship,
-    ConversationRelationship,
-    AssistantRelationship,
-)
-from objects.question import Question
-from objects.response import Response, GraphResponse
-from objects.types import UserMessage, AssistantMessage
-from resources.prompts import (
-    get_prompt_no_context_template,
-    get_prompt_template,
-    get_prompt_no_context,
-)
-from tools.embedding import (
-    TextEmbeddingService,
-    EmbeddingServiceProtocol,
-    FakeEmbeddingService,
-)
-from tools.llm import LLM
-from tools.secret_manager import EnvSecretManager, GoogleSecretManager
 import os
-from tools.secret_manager import SecretManager
+from typing import Generator, List, Tuple, Union
+from uuid import uuid4
+
+from database.communicator import GraphReader, GraphWriter
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from neo4j.graph import Node, Path
+from objects.graphtypes import (AssistantNode, AssistantRelationship,
+                                ConversationEntry, ConversationNode,
+                                DocumentNode, MessageNode)
+from objects.question import Question
+from objects.response import GraphResponse, Response
+from objects.types import AssistantMessage, UserMessage
+from resources.prompts import (get_prompt_no_context,
+                               get_prompt_no_context_template,
+                               get_prompt_template)
+from tools.embedding import (EmbeddingServiceProtocol, FakeEmbeddingService,
+                             TextEmbeddingService)
+from tools.llm import LLM
+from tools.secret_manager import (EnvSecretManager, GoogleSecretManager,
+                                  SecretManager)
 
 PUBLIC = True
 
@@ -39,16 +26,18 @@ secret_manager = EnvSecretManager(env_path=".env")
 router = APIRouter()
 
 
-def get_prompt(context: List[str]) -> str:
+def get_prompt(question: Question, context: List[str]) -> str:
     """
     Determine the prompt used for LLM query.
     """
     return (
-        get_prompt_no_context_template() if len(context) < 1 else get_prompt_template()
+        get_prompt_no_context_template(question)
+        if len(context) < 1
+        else get_prompt_template(question, context)
     )
 
 
-def get_reader() -> GraphReader:
+def get_reader() -> Generator[GraphReader, None, None]:
     reader = GraphReader(secret_manager=secret_manager)
     try:
         yield reader
@@ -56,7 +45,7 @@ def get_reader() -> GraphReader:
         reader.close_driver()
 
 
-def get_writer() -> GraphWriter:
+def get_writer() -> Generator[GraphWriter, None, None]:
     writer = GraphWriter(secret_manager=secret_manager)
     try:
         yield writer
@@ -93,7 +82,7 @@ def get_default() -> str:
 
 
 @router.post("/llm_dummy", response_model=Response)
-async def get_response(question: Question) -> Response:
+async def get_response_dummy(question: Question) -> Response:
     """
     Dummy test.
     """
@@ -145,9 +134,8 @@ async def get_response(
     """
 
     question_embedding = embedding_service.get_embedding(text=question.question)
-    print("got embedding...")
 
-    context = reader.retrieve_context_documents(
+    context_df = reader.retrieve_context_documents(
         question_embedding=question_embedding,
         number_of_context_documents=question.number_of_documents,
     )
@@ -155,10 +143,11 @@ async def get_response(
     user_id: str = "user-" + str(uuid4())
     assistant_id: str = "llm-" + str(uuid4())
     llm_response = llm.get_response(
-        question=question, context=context, user_id=user_id, assistant_id=assistant_id
+        question=question,
+        context=context_df,
+        user_id=user_id,
+        assistant_id=assistant_id,
     )
-    print("response retrieved...")
-    print(llm_response)
     user_message = UserMessage(
         session_id=question.session_id,
         conversation_id=question.conversation_id,
@@ -172,8 +161,8 @@ async def get_response(
         session_id=question.session_id,
         conversation_id=question.conversation_id,
         message_id=assistant_id,
-        prompt=get_prompt(context=context),
-        content=llm_response.content,
+        prompt=get_prompt(context=context_df, question=question),
+        content=llm_response,
         public=PUBLIC,
         vectorIndexSearch=True,
         number_of_documents=question.number_of_documents,
@@ -193,17 +182,17 @@ async def get_response(
         log_assistant_message,
         assistant_message,
         user_message.message_id,
-        list(context["index"]),
+        list(context_df["index"]),
         writer,
     )
-    print("returning...")
+
     return Response(
         session_id=question.session_id,
         conversation_id=question.conversation_id,
-        content=llm_response.content,
+        content=llm_response,
         message_history=question.message_history
         + [user_message.message_id, assistant_message.message_id],
-        graph_data=context,
+        graph_data=context_df,
     )
 
 
@@ -354,7 +343,6 @@ MessagePathNodeTypes = Union[AssistantNode, MessageNode, ConversationNode]
 
 
 def encode_message_path_node(node: Node) -> MessagePathNodeTypes:
-    print(f"Processing node with labels: {node.labels}")
     if "Assistant" in node.labels:
         return create_assistant_node(node)
     elif "Message" in node.labels:

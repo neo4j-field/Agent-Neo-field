@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import Any, Dict, List
+
 
 class CodeEmbeddingService(ABC):
     @abstractmethod

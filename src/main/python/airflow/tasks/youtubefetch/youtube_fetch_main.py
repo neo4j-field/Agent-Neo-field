@@ -51,5 +51,4 @@ if __name__ == '__main__':
 
     print("YouTube transcript chunks uploaded to graph successfully.")
 
-
 '''

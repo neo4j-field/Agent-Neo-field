@@ -1,7 +1,8 @@
 import unittest
 
 from objects import AssistantMessage
-from resources.prompts.prompts import prompt_no_context_template, prompt_template
+from resources.prompts.prompts import (prompt_no_context_template,
+                                       prompt_template)
 
 
 class TestAssistantMessage(unittest.TestCase):

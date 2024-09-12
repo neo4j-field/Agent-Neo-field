@@ -1,40 +1,30 @@
-# todo: this is broken now. I am getting the following error:
-# todo: I think it's related to DI the secret manager... or somehow my IDE isn't picking up something
-"""
-raise KeyError(f"{secret_id} not found in environment variables")
-KeyError: 'OPENAI_API_KEY not found in environment variables'
-"""
-
-
-import sys
 import os
+import sys
 import unittest
+from typing import ClassVar, List, Tuple
 from unittest.mock import patch
-import inspect
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from fastapi.testclient import TestClient
 import pandas as pd
-from typing import List, Tuple
+from database import GraphReader, GraphWriter
+from fastapi.testclient import TestClient
+from objects.question import Question
+from objects.rating import Rating
+from objects.types import AssistantMessage, UserMessage
+from routers.llm import get_embedding_service, get_llm, get_reader, get_writer
+from tools import LLM, FakeEmbeddingService, SecretManager
 
 from main import app
-from database import GraphReader, GraphWriter
-from tools import FakeEmbeddingService
-from tools import LLM
-from tools import SecretManager
-from objects.graphtypes import UserMessage, AssistantMessage
-from objects.rating import Rating
-from routers.llm import get_embedding_service, get_llm, get_reader, get_writer
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 client = TestClient(app)
 
 
 class MockSecretManager(SecretManager):
-    def __init__(self, secret_id):
+    def __init__(self, secret_id: str):
         self.secret_id = secret_id
 
-    def access_secret_version(self, secret_id, version_id="latest"):
+    def access_secret_version(self, secret_id: str, version_id: str = "latest"):
         secrets = {
             "OPENAI_API_KEY": "test-key",
             "OPENAI_API_VERSION": "v1",
@@ -45,12 +35,12 @@ class MockSecretManager(SecretManager):
             "GCP_PROJECT_ID": "test-project",
             "GCP_REGION": "us-central1",
         }
-        return secrets.get(self.secret_id, "default-value")
+        return secrets.get(secret_id, "default-value")
 
 
 class GraphWriterMock(GraphWriter):
     def __init__(self):
-        super().__init__(secret_manager=MockSecretManager(secret_id="OPEN_API_KEY"))
+        super().__init__(secret_manager=MockSecretManager(secret_id="OPENAI_API_KEY"))
 
     def log_new_conversation(
         self, message: UserMessage, llm_type: str, temperature: float
@@ -68,13 +58,13 @@ class GraphWriterMock(GraphWriter):
     ) -> None:
         pass
 
-    def rate_message(rating: Rating) -> None:
+    def rate_message(self, rating: Rating) -> None:
         pass
 
 
 class GraphReaderMock(GraphReader):
     def __init__(self):
-        super().__init__(secret_manager=MockSecretManager(secret_id="OPEN_API_KEY"))
+        super().__init__(secret_manager=MockSecretManager(secret_id="OPENAI_API_KEY"))
 
     def retrieve_context_documents(
         self, question_embedding: List[float], number_of_context_documents: int = 10
@@ -87,9 +77,7 @@ class GraphReaderMock(GraphReader):
             }
         )
 
-    def retrieve_conversation_history(
-        self, conversation_id: str
-    ) -> List[Tuple[Tuple[List, List], Tuple[List, List]]]:
+    def retrieve_conversation_history(self, conversation_id: str) -> List[Tuple]:
         return [
             (
                 (
@@ -188,52 +176,44 @@ app.dependency_overrides[SecretManager] = MockSecretManager
 
 
 class TestLLMRoute(unittest.TestCase):
+    question: ClassVar[Question]
+
     @classmethod
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def setUpClass(cls) -> None:
-        cls.question = {
-            "session_id": "s-123-test",
-            "conversation_id": "conv-123-test",
-            "message_id": "user-123-test",
-            "question": "What is GDS?",
-            "conversation_history": "The user keeps asking what GDS is.",
-            "llm_type": "GPT-4 8k",
-            "number_of_documents": 10,
-            "temperature": 0.7,
-        }
+        cls.question = Question(
+            session_id="s-123-test",
+            conversation_id="conv-123-test",
+            question="What is GDS?",
+            message_history=["user-123-test"],
+            conversation_history="The user keeps asking what GDS is.",
+            llm_type="GPT-4 8k",
+            number_of_documents=10,
+            temperature=0.7,
+        )
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def test_default(self) -> None:
-        print(
-            f"Environment Variables in {inspect.currentframe().f_code.co_name}:",
-            os.environ.get("OPENAI_API_KEY"),
-        )
         resp = client.get("/")
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json(), "Agent Neo backend is live.")
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def test_llm_dummy_route(self) -> None:
-        print(
-            f"Environment Variables in {inspect.currentframe().f_code.co_name}:",
-            os.environ.get("OPENAI_API_KEY"),
-        )
         resp = client.post("/llm_dummy", json=self.question)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["content"], "This call works!")
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def test_llm_route(self) -> None:
-        print(
-            f"Environment Variables in {inspect.currentframe().f_code.co_name}:",
-            os.environ.get("OPENAI_API_KEY"),
-        )
         resp = client.post("/llm", json=self.question)
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["content"], "GDS is cool.")
 
 
 class TestGraphResponseRoute(unittest.TestCase):
+    conversation_id: str
+
     @classmethod
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def setUpClass(cls) -> None:
@@ -241,11 +221,6 @@ class TestGraphResponseRoute(unittest.TestCase):
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def test_get_graph_response(self) -> None:
-        print(
-            f"Environment Variables in {inspect.currentframe().f_code.co_name}:",
-            os.environ.get("OPENAI_API_KEY"),
-        )
-
         response = client.get(f"/graph-llm/{self.conversation_id}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -282,10 +257,6 @@ class TestGraphResponseRoute(unittest.TestCase):
 
     @patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"})
     def test_default(self) -> None:
-        print(
-            f"Environment Variables in {inspect.currentframe().f_code.co_name}:",
-            os.environ.get("OPENAI_API_KEY"),
-        )
         response = client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), "Agent Neo backend is live.")

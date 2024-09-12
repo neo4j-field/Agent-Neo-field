@@ -1,24 +1,13 @@
-import os
+from typing import List, Optional, Tuple, Type
 
 import neo4j
-import pandas as pd
-import time
-from typing import List, Optional, Tuple, Dict
-import uuid
-from langchain.chat_models import ChatVertexAI, AzureChatOpenAI
-from langchain.chains import ConversationChain
-from langchain.memory import ConversationSummaryBufferMemory
-from langchain.prompts.prompt import PromptTemplate
-from neo4j import Record, Result
-from neo4j.exceptions import ConstraintError
 import openai
-
-from neo4j.graph import Node, Relationship, Path
+import pandas as pd
+from neo4j.exceptions import ConstraintError
+from objects import AssistantMessage, Rating, UserMessage
+from tools import SecretManager, timeit
 
 from .drivers import init_driver
-from tools import SecretManager, timeit
-from objects import UserMessage, AssistantMessage
-from objects import Rating
 
 
 class Communicator:
@@ -30,7 +19,6 @@ class Communicator:
         self.sm = secret_manager
 
         openai.api_key = self.sm.access_secret_version("OPENAI_API_KEY")
-        openai.api_version = self.sm.access_secret_version("OPENAI_API_VERSION")
 
         self.driver = init_driver(
             uri=self.sm.access_secret_version("NEO4J_URI"),
@@ -48,6 +36,31 @@ class Communicator:
         """
 
         self.driver.close()
+
+    def __enter__(self) -> "Communicator":
+        """
+        Enter the runtime context related to this object.
+        """
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[Type[BaseException]],
+    ) -> bool:
+        """
+        Exit the runtime context and close the driver.
+        :param exc_type: Exception type
+        :param exc_value: Exception value
+        :param traceback: Traceback object
+        :return: True if no exception occurred, False otherwise
+        """
+        self.close_driver()
+        if exc_type is not None:
+            print(f"Exception occurred: {exc_type}, {exc_value}")
+            return False
+        return True
 
 
 class GraphWriter(Communicator):
@@ -67,19 +80,19 @@ class GraphWriter(Communicator):
             tx.run(
                 """
             create (c:Conversation)-[:FIRST]->(m:Message)
-            set c.id = $convId, 
+            set c.id = $convId,
                 c.llm = $llm,
                 c.temperature = $temperature,
                 c.public = toBoolean($public),
-                m.id = $messId, 
+                m.id = $messId,
                 m.content = $content,
-                m.role = $role, 
+                m.role = $role,
                 m.postTime = datetime(),
                 m.public = toBoolean($public)
 
             with c, m
             call db.create.setNodeVectorProperty(m, 'embedding', $embedding)
-            
+
             merge (s:Session {id: $sessionId})
             on create set s.createTime = datetime()
             merge (s)-[:HAS_CONVERSATION]->(c)""",
@@ -117,10 +130,10 @@ class GraphWriter(Communicator):
             match (pm:Message {id: $prevMessId})
             merge (m:Message {id: $messId})
             set m.content = $content,
-                m.role = $role, 
+                m.role = $role,
                 m.postTime = datetime(),
                 m.public = toBoolean($public)
-            
+
             with m, pm
             call db.create.setNodeVectorProperty(m, 'embedding', $embedding)
 
@@ -152,28 +165,25 @@ class GraphWriter(Communicator):
         creates appropriate relationships.
         """
 
-        print("logging llm message...")
-
         mem = "None"
 
         def log(tx):
             tx.run(
                 """
             MATCH (pm:Message {id: $prevMessId})
-            
-            MERGE (m:Message {id: $messId})
+
+            MERGE (m:Assistant {id: $messId})
             SET m.content = $content,
-                m.role = $role, 
+                m.role = $role,
                 m.postTime = datetime(),
                 m.numDocs = $numDocs,
                 m.vectorIndexSearch = true,
                 m.prompt = $prompt,
                 m.public = toBoolean($public),
-                m.resultingSummary = resultingSummary,
-                m.test = 'true'
+                m.resultingSummary = $resultingSummary
 
             MERGE (pm)-[:NEXT]->(m)
-            
+
             WITH m
             UNWIND $contextIndices as contextIdx
             MATCH (d:Document)
@@ -283,14 +293,13 @@ class GraphWriter(Communicator):
         :return:
         """
 
-        def write_node(tx):
+        def write_node(tx) -> None:
             prompt = (
                 "merge (n:" + label + "{id: $id})"
                 if not label == "Document"
                 else "merge (n:" + label + "{index: $id})"
             )
             tx.run(prompt, id=id)
-            print(prompt)
 
         try:
             with self.driver.session(database=self.database_name) as session:
@@ -373,7 +382,8 @@ class GraphReader(Communicator):
 
             return tx.run(
                 """
-                            CALL db.index.vector.queryNodes('topic_group_summary_embeddings', toInteger($k), $questionEmbedding)
+                            CALL db.index.vector.queryNodes('topic_group_summary_embeddings', toInteger($k),
+                            $questionEmbedding)
                             YIELD node AS g, score
                             MATCH (g)<-[:IN_GROUP]-()<-[h:HAS_TOPIC]-(vDocs)
                             WHERE h.rankAlpha50 <= toInteger($documents_per_topic)

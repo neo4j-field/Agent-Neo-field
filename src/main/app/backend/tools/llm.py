@@ -1,19 +1,15 @@
-import os
 from functools import cached_property
-from typing import Optional, Union
-
-import openai
-
-from langchain_community.chat_models import AzureChatOpenAI, FakeListChatModel
-from langchain_google_vertexai import ChatVertexAI
+from typing import Optional
 
 import pandas as pd
-from pydantic import BaseModel, Field, validator, computed_field
-
+from langchain_community.chat_models import ChatOpenAI, FakeListChatModel
+from langchain_google_vertexai import ChatVertexAI
 from objects.question import Question
-from resources.prompts import get_prompt_template, get_prompt_no_context_template
-from tools.secret_manager import EnvSecretManager
+from pydantic import BaseModel, Field, validator
+from resources.prompts import (get_prompt_no_context_template,
+                               get_prompt_template)
 from resources.valid_models import get_valid_models
+from tools.secret_manager import EnvSecretManager
 
 sm = EnvSecretManager(env_path=".env")
 
@@ -42,9 +38,8 @@ class LLM(BaseModel):
             raise ValueError("Temperature must be between 0.0 and 1.0.")
         return v
 
-    @computed_field
     @cached_property
-    def llm_instance(self) -> ChatVertexAI | AzureChatOpenAI | FakeListChatModel:
+    def llm_instance(self) -> ChatVertexAI | ChatOpenAI | FakeListChatModel:
         return self._init_llm()
 
     def _init_llm(self):
@@ -79,12 +74,9 @@ class LLM(BaseModel):
                 # Tokens per Minute Rate Limit (thousands): 10
                 # Rate limit (Tokens per minute): 10000
                 # Rate limit (Requests per minute): 60
-                return AzureChatOpenAI(
-                    openai_api_version=openai.api_version,
-                    openai_api_key=openai.api_key,
-                    openai_api_base=sm.access_secret_version("OPENAI_ENDPOINT"),
-                    deployment_name=sm.access_secret_version("GPT4_8K_NAME"),
-                    model_name="gpt-4",
+                return ChatOpenAI(
+                    model="gpt-4",
+                    api_key=sm.access_secret_version("OPENAI_API_KEY"),
                     temperature=self.temperature,
                 )  # default is 0.7
                 # return OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
@@ -94,12 +86,9 @@ class LLM(BaseModel):
                 # Tokens per Minute Rate Limit (thousands): 30
                 # Rate limit (Tokens per minute): 30000
                 # Rate limit (Requests per minute): 180
-                return AzureChatOpenAI(
-                    openai_api_version=openai.api_version,
-                    openai_api_key=openai.api_key,
-                    openai_api_base=sm.access_secret_version("OPENAI_ENDPOINT"),
-                    deployment_name=sm.access_secret_version("GPT4_32K_NAME"),
-                    model_name="gpt-4-32k",
+                return ChatOpenAI(
+                    model_name="gpt-4-turbo",
+                    api_key=sm.access_secret_version("OPENAI_API_KEY"),
                     temperature=self.temperature,
                 )  # default is 0.7
                 # return OpenAI(api_key=sm.access_secret_version("openai_key_dan"),
@@ -119,9 +108,8 @@ class LLM(BaseModel):
         Get a response from the LLM.
         """
 
-        llm_input = self._format_llm_input(question=question.question, context=context)
+        llm_input = self._format_llm_input(question=question, context=context)
 
-        print("llm input: ", llm_input)
         # return self.llm_instance.predict(llm_input)
         return self.llm_instance.invoke(
             llm_input,
@@ -136,17 +124,11 @@ class LLM(BaseModel):
         )
 
     def _format_llm_input(
-        self, question: str, context: Optional[pd.DataFrame] = None
+        self, question: Question, context: Optional[pd.DataFrame] = None
     ) -> str:
-        """
-        Format the LLM input and return the input along with the context IDs if they exist.
-        """
-
-        if context is not None:
-            print("creating context prompt...")
+        if context is not None and isinstance(context, pd.DataFrame):
             return get_prompt_template(
-                question=question, context=context[["url", "text"]].to_dict("records")
+                question=question, context=context[["url", "text"]]
             )
         else:
-            print("creating non-context prompt...")
             return get_prompt_no_context_template(question=question)

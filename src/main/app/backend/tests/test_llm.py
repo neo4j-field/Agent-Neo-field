@@ -1,9 +1,10 @@
 import unittest
 
 import pandas as pd
-
+from objects.question import Question
+from resources.prompts import (get_prompt_no_context_template,
+                               get_prompt_template)
 from tools.llm import LLM
-from resources.prompts.prompts import prompt_no_context_template, prompt_template
 
 
 class TestLLM(unittest.TestCase):
@@ -29,17 +30,25 @@ class TestLLM(unittest.TestCase):
                 {"url": "url2", "text": "This is more text."},
             ]
         )
-        question = "What is GDS?"
-
-        truth_with_context = prompt_template.format(
-            question=question, context=context_df.to_dict("records")
+        question = Question(
+            session_id="s-123-test",
+            conversation_id="conv-123-test",
+            question="What is GDS?",
+            message_history=["user-123-test"],
+            conversation_history="The user keeps asking what GDS is.",
+            llm_type="GPT-4 8k",
+            number_of_documents=10,
+            temperature=0.7,
         )
-        truth_without_context = prompt_no_context_template.format(question=question)
+
+        truth_with_context = get_prompt_template(question=question, context=context_df)
+        truth_without_context = get_prompt_no_context_template(question=question)
 
         self.assertEqual(
             llm._format_llm_input(question=question, context=context_df),
             truth_with_context,
         )
         self.assertEqual(
-            llm._format_llm_input(question=question), truth_without_context
+            llm._format_llm_input(question=question, context=context_df),
+            truth_without_context,
         )

@@ -1,5 +1,4 @@
-from neo4j import GraphDatabase
-from neo4j import Driver
+from neo4j import Driver, GraphDatabase
 
 
 def init_driver(uri: str, username: str, password: str) -> Driver:

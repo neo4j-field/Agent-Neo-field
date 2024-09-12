@@ -1,22 +1,38 @@
-from .base_fetcher import BaseFetcher
-from .secret_manager import SecretManager
+import io
+import os
+from typing import Callable, Dict, List, Optional, Tuple
+
+import pandas as pd
 from google.cloud import storage
 from google.oauth2 import service_account
-from typing import List,Dict, Callable, Tuple
-from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain.docstore.document import Document
-from langchain.text_splitter import TokenTextSplitter
-import os
-import pandas as pd
+from langchain.text_splitter import CharacterTextSplitter, TokenTextSplitter
+from langchain_community.document_loaders import UnstructuredURLLoader
 
+from ..formatter import TextFormatter
+from .base_fetcher import BaseFetcher
+from .secret_manager import SecretManager
 
 
 class YoutubeFetcher(BaseFetcher):
-
-    def __init__(self, storage_client: storage.Client = None, secret_client: SecretManager = None) -> None:
-        super().__init__(storage_client, secret_client)
+    def __init__(
+        self,
+        storage_client: Optional[storage.Client] = None,
+        secret_client: SecretManager = None,
+    ):
+        super().__init__()
         self._storage_client = storage_client or storage.Client()
         self._secret_client = secret_client or SecretManager()
+        self._chunked_documents: List[Document] = []
+        self.bucket_name: Optional[str] = None
+
+    @property
+    def storage_client(self):
+        return self._storage_client
+
+    @property
+    def secret_manager_client(self):
+        return self._secret_manager_client
 
     @property
     def chunk_texts(self) -> List[str]:
@@ -26,24 +42,28 @@ class YoutubeFetcher(BaseFetcher):
     @property
     def chunk_urls(self) -> List[str]:
         self._assert_documents_chunked()
-        return list({chunk.metadata.get('source', '') for chunk in self._chunked_documents})
+        return list(
+            {chunk.metadata.get("source", "") for chunk in self._chunked_documents}
+        )
 
     @property
     def chunk_as_dict(self) -> Dict[str, List[str]]:
         self._assert_documents_chunked()
 
-        result = {}
+        result: Dict[str, List[str]] = {}
         for k in self.chunk_urls:
             result.update({k: []})
 
         for chunk in self._chunked_documents:
-            result.get(chunk.metadata.get('source')).append(chunk.page_content)
+            result.get(chunk.metadata.get("source")).append(chunk.page_content)
 
         return result
 
     def _assert_documents_chunked(self):
         if not self._chunked_documents:
-            raise ValueError("Documents have not been chunked yet. Call chunk_documents() first.")
+            raise ValueError(
+                "Documents have not been chunked yet. Call chunk_documents() first."
+            )
 
     def _scrape_sites_into_langchain_docs(self, resources: List[str]) -> List[Document]:
         try:
@@ -54,15 +74,17 @@ class YoutubeFetcher(BaseFetcher):
             return []
 
     @staticmethod
-    def _process_youtube_id(id:str) -> str:
+    def _process_youtube_id(id: str) -> str:
         result = id.replace("youtube/transcripts/", "")
         return result.replace(".txt", "")
 
-    def _get_transcript_text(self, id: str,bucket_name:str  = None,blob_name: str = None) -> str:
+    def _get_transcript_text(
+        self, id: str, bucket_name: Optional[str] = None, blob_name: str = None
+    ) -> str:
         if bucket_name is None:
             bucket_name = self._secret_client.access_secret_version("bucket_name")
 
-        bucket = self._storage._storage_client.get_bucket(bucket_name)
+        bucket = self._storage_client.get_bucket(bucket_name)
 
         if blob_name is None:
             blobs = list(bucket.list_blobs())
@@ -70,61 +92,68 @@ class YoutubeFetcher(BaseFetcher):
                 raise Exception("No blobs found in the bucket.")
             blob = blobs[0]
         else:
-
             blob = bucket.blob(blob_name)
-
 
         data = blob.download_as_string()
 
         return data
 
-
-    def _scrape_youtube_transcripts_into_langchain_docs(self, id_list: List[str] = None) -> Tuple[
-        List[Document], List[str]]:
-
-
+    def _scrape_youtube_transcripts_into_langchain_docs(
+        self, id_list: List[str] = None
+    ) -> Tuple[List[Document], List[str]]:
         docs = []
         unsuccessful = []
 
         # grab all transcript file addresses in bucket and format to get ids
         if not id_list:
-            id_list = [self._process_youtube_id(blob.name) for blob in
-                       self.client.list_blobs(self.bucket_name, prefix="youtube/transcripts/")][1:]
+            id_list = [
+                self._process_youtube_id(blob.name)
+                for blob in self._storage_client.list_blobs(
+                    self.bucket_name, prefix="youtube/transcripts/"
+                )
+            ][1:]
 
         # grab the transcripts and format into LangChain docs
-        for id in id_list:
+        for _id in id_list:
             try:
-                transcript = self._get_transcript_text(id)
-                url = "https://www.youtube.com/watch?v=" + id
+                transcript = self._get_transcript_text(_id)
+                url = "https://www.youtube.com/watch?v=" + _id
                 docs.append(Document(page_content=transcript, metadata={"source": url}))
             except Exception as e:
-                print(f"Error loading document with id: {id}")
+                print(f"Error loading document with id: {_id}")
                 print(f"Error: {e}")
-                unsuccessful.append(id)
+                unsuccessful.append(_id)
 
         return docs, unsuccessful
 
-    def _split_into_chunks(self, documents: List[Document],
-                           splitter: Callable[[List[Document]], List[Document]]) -> List[Document]:
+    def _split_into_chunks(
+        self,
+        documents: List[Document],
+        splitter: Callable[[List[Document]], List[Document]],
+    ) -> List[Document]:
         return splitter.split_documents(documents)
 
-    def _clean_chunked_documents(self, chunked_docs: List[Document], cleaning_functions: List[Callable[[str], str]]) -> \
-            List[Document]:
+    def _clean_chunked_documents(
+        self,
+        chunked_docs: List[Document],
+        cleaning_functions: List[Callable[[str], str]],
+    ) -> List[Document]:
         for i, doc in enumerate(chunked_docs):
             for func in cleaning_functions:
                 doc.page_content = func(doc.page_content)
             chunked_docs[i] = doc
         return chunked_docs
 
-    def chunk_documents(self, urls: List[str],
-                        splitter: Callable[[List[Document]], List[Document]] = None,
-                        cleaning_functions: List[Callable[[str], str]] = None) -> None:
-
+    def chunk_documents(
+        self,
+        urls: List[str],
+        splitter: Callable[[List[Document]], List[Document]] = None,
+        cleaning_functions: List[Callable[[str], str]] = None,
+    ) -> None:
         if splitter is None:
             splitter = CharacterTextSplitter(
-                separator="\n",
-                chunk_size=1024,
-                chunk_overlap=128)
+                separator="\n", chunk_size=1024, chunk_overlap=128
+            )
 
         # Start scraping
         documents = self._scrape_sites_into_langchain_docs(urls)
@@ -133,18 +162,20 @@ class YoutubeFetcher(BaseFetcher):
         chunked_docs = self._split_into_chunks(documents, splitter)
 
         if cleaning_functions:
-            chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
+            chunked_docs = self._clean_chunked_documents(
+                chunked_docs, cleaning_functions
+            )
 
         self._chunked_documents.extend(chunked_docs)
 
-    def chunk_youtube_transcripts(self, ids: List[str] = None,
-                                  splitter: Callable[[List[Document]], List[Document]] = None,
-                                  cleaning_functions: List[Callable[[str], str]] = None) -> None:
-
+    def chunk_youtube_transcripts(
+        self,
+        ids: List[str] = None,
+        splitter: Callable[[List[Document]], List[Document]] = None,
+        cleaning_functions: List[Callable[[str], str]] = None,
+    ) -> None:
         if splitter is None:
-            splitter = TokenTextSplitter(
-                chunk_size=512,
-                chunk_overlap=64)
+            splitter = TokenTextSplitter(chunk_size=512, chunk_overlap=64)
 
         # Start scraping
         documents, failed = self._scrape_youtube_transcripts_into_langchain_docs(ids)
@@ -153,7 +184,9 @@ class YoutubeFetcher(BaseFetcher):
         chunked_docs = self._split_into_chunks(documents, splitter)
 
         if cleaning_functions:
-            chunked_docs = self._clean_chunked_documents(chunked_docs, cleaning_functions)
+            chunked_docs = self._clean_chunked_documents(
+                chunked_docs, cleaning_functions
+            )
 
         self._chunked_documents.extend(chunked_docs)
 
@@ -169,13 +202,13 @@ class GCPStorageLoader:
     def __init__(self, client: storage.Client = None) -> None:
         if not client:
             credentials = service_account.Credentials.from_service_account_file(
-                os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
+                os.environ.get("GCP_SERVICE_ACCOUNT_KEY_PATH")
             )
             self.client = storage.Client(credentials=credentials)
         else:
             self.client = client
 
-        self.service_account = os.environ.get('GCP_SERVICE_ACCOUNT_KEY_PATH')
+        self.service_account = os.environ.get("GCP_SERVICE_ACCOUNT_KEY_PATH")
         self.bucket_name = "agent-neo-neo4j-cs-team-201901-docs"
         self.bucket = self.client.get_bucket(self.bucket_name)
 
@@ -199,11 +232,10 @@ class GCPStorageLoader:
 
         videos_temp = self.bucket.get_blob("youtube/neo4j_video_list.csv")
         videos_temp = videos_temp.download_as_string()
-        videos_list = pd.read_csv(io.BytesIO(videos_temp))['YouTube_Address'].to_list()
+        videos_list = pd.read_csv(io.BytesIO(videos_temp))["YouTube_Address"].to_list()
 
         return videos_list
 
-    #todo: temporarily breaking
     @staticmethod
     def _create_transcript(video_id: str) -> str:
         """
@@ -211,16 +243,18 @@ class GCPStorageLoader:
         Returns a string representation of the video transcript.
         """
 
-        #raw_transcript = YouTubeTranscriptApi.get_transcript(video_id)
+        # raw_transcript = YouTubeTranscriptApi.get_transcript(video_id)
         # instantiate the text formatter
-        formatter = TextFormatter()
+        formatter = TextFormatter(video_id)
 
         # format the video into a string without timestamps, etc...
-        transcript_formatted = formatter.format_transcript('')
+        transcript_formatted = formatter.format_transcript(
+            lambda t: " ".join([word for word in t.split() if not word.isdigit()])
+        )
 
-        # replace newlines with a space
+        transcript_formatted = transcript_formatted.replace("\n", " ")
 
-        return transcript_formatted.replace("\n", " ")
+        return transcript_formatted
 
     def _upload_transcript(self, transcript: str, video_id: str) -> None:
         """
@@ -229,7 +263,9 @@ class GCPStorageLoader:
         """
 
         file_loc = "youtube/transcripts/"
-        self.bucket.blob(file_loc + video_id + ".txt").upload_from_string(transcript, 'text/plain')
+        self.bucket.blob(file_loc + video_id + ".txt").upload_from_string(
+            transcript, "text/plain"
+        )
 
     def create_and_upload_neo4j_transcripts(self) -> List[str]:
         """
@@ -250,7 +286,7 @@ class GCPStorageLoader:
                 transcript = self._create_transcript(video_id=id)
                 self._upload_transcript(transcript=transcript, video_id=id)
                 print("Video " + id + " Uploaded to GCP Storage.")
-            except Exception as e:
+            except Exception:
                 print("Failed: " + id)
                 # print(e)
                 unsuccessful += [id]
@@ -265,7 +301,6 @@ class GCPStorageLoader:
 
         file_loc = "youtube/"
         failed_df = pd.Series({"YouTube_Address": unsuccessful_list})
-        self.bucket.blob(file_loc + "neo4j_failed_video_list.csv").upload_from_string(failed_df.to_csv(), 'text/csv')
-
-
-
+        self.bucket.blob(file_loc + "neo4j_failed_video_list.csv").upload_from_string(
+            failed_df.to_csv(), "text/csv"
+        )

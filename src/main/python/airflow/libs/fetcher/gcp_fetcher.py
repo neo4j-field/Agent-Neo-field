@@ -1,16 +1,22 @@
-from google.cloud import storage
-from typing import Optional, Dict, Any,List
-import os
 import json
-from .base_fetcher import BaseFetcher
+import os
+from itertools import chain
+from typing import Any, Dict, List, Optional
+
 import requests
 from bs4 import BeautifulSoup
+from google.cloud import storage
+
+from .base_fetcher import BaseFetcher
 from .secret_manager import SecretManager
-from itertools import chain
 
 
 class GCPFetcher(BaseFetcher):
-    def __init__(self, storage_client: Optional[storage.Client] = None, secret_client: SecretManager = None):
+    def __init__(
+        self,
+        storage_client: Optional[storage.Client] = None,
+        secret_client: SecretManager = None,
+    ):
         super().__init__()
         self._storage_client = storage_client or storage.Client()
         self._secret_client = secret_client or SecretManager()
@@ -26,38 +32,43 @@ class GCPFetcher(BaseFetcher):
     def fetch_config(self, secret_name):
         return self._secret_client.access_secret_version(secret_name)
 
-    def fetch(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
+    def fetch(
+        self, bucket_name: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
         return self.get_sitemap_urls(bucket_name)
 
     def get_sitemap_urls(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
         if bucket_name is None:
-            bucket_name = os.environ.get('GCP_SITEMAPS_BUCKET')
+            bucket_name = os.environ.get("GCP_SITEMAPS_BUCKET")
         return self._read_from_gcp(bucket_name)
 
-    def get_practitioner_guide_md(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_practitioner_guide_md(
+        self, bucket_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         if bucket_name is None:
-            bucket_name = os.environ.get('GCP_PRACTITIONERS_GUIDE_SITES_BUCKET')
+            bucket_name = os.environ.get("GCP_PRACTITIONERS_GUIDE_SITES_BUCKET")
         return self._read_from_gcp(bucket_name)
 
     def get_other_articles(self, bucket_name: Optional[str] = None) -> Dict[str, Any]:
         if bucket_name is None:
-            bucket_name = os.environ.get('GCP_OTHER_ARTICLES_BUCKET')
+            bucket_name = os.environ.get("GCP_OTHER_ARTICLES_BUCKET")
         return self._read_from_gcp(bucket_name)
 
-    def _read_from_gcp(self, bucket_name: str, blob_name: str = None) -> Dict[str, Any]:
-
+    def _read_from_gcp(
+        self, bucket_name: str, blob_name: Optional[str] = None
+    ) -> Dict[Optional[str], Optional[Any]]:
         bucket = self._storage_client.get_bucket(bucket_name)
 
         if not blob_name:
             blobs = list(bucket.list_blobs())
             if not blobs:
-                return []
+                return dict()
             blob_name = blobs[0].name
 
         blob = bucket.get_blob(blob_name)
 
         if blob is None:
-            return []
+            return dict()
 
         content = blob.download_as_text()
         data = json.loads(content)
@@ -69,7 +80,7 @@ class GCPFetcher(BaseFetcher):
         urls = [element.text for element in soup.find_all("loc")]
         return urls
 
-    def parse_sitemaps_tolist(self,sitemaps: List[str]) -> List[str]:
+    def parse_sitemaps_tolist(self, sitemaps: List[str]) -> List[str]:
         neo4j_doc_sites = []
 
         for sitemap in sitemaps:
@@ -80,7 +91,7 @@ class GCPFetcher(BaseFetcher):
 
         return neo4j_doc_sites
 
-    def extract_list_from_json(self,json_data: dict, key: str = None) -> list:
+    def extract_list_from_json(self, json_data: dict, key: str = None) -> list:
         if key:
             return json_data.get(key, [])
         elif len(json_data) == 1:
@@ -89,24 +100,25 @@ class GCPFetcher(BaseFetcher):
                 return json_data[single_key]
         return []
 
-    def concatenate_unique_ordered(self,*lists: List[Any]) -> List[Any]:
+    @staticmethod
+    def concatenate_unique_ordered(*lists: List[Any]) -> List[Any]:
         seen = set()
         result = []
-        for item in chain.from_iterable(
-                lists):
+        for item in chain.from_iterable(lists):
             if item not in seen:
                 seen.add(item)
                 result.append(item)
         return result
 
-    def write_to_gcs(self, data: List[str] = None, bucket_name: str = None, file_name: str = None):
+    def write_to_gcs(
+        self, data: List[str] = None, bucket_name: str = None, file_name: str = None
+    ):
         """
         Write data to a file in Google Cloud Storage.
         """
         bucket = self._storage_client.get_bucket(bucket_name)
         blob = bucket.blob(file_name)
 
-        # Convert list to string for writing to file
-        data_str = "\n".join(data)
+        data_str = "\n".join(data) if data else ""
         blob.upload_from_string(data_str)
         print(f"Data written to {file_name} in bucket {bucket_name}")

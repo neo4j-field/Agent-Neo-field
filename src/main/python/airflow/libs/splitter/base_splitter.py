@@ -1,13 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar, List
+from typing import Generic, List, TypeVar
 
 # Define type variables
-T = TypeVar('T')  # Input type
-U = TypeVar('U')  # Output type
+T = TypeVar("T")  # Input type
+U = TypeVar("U")  # Output type
 
 
 class BaseSplitter(ABC, Generic[T, U]):
-
     def __init__(self):
         self._storage_client = None
         self._secret_manager_client = None

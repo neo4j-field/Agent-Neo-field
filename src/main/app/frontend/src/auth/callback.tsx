@@ -5,7 +5,7 @@ import { getDynamicConfigValue } from './dynamicConfig';
 const Callback = () => {
 
   useEffect(() => {
-    const doAsync = async () => { 
+    const doAsync = async () => {
       try {
         await auth.handleAuthentication();
       } catch (e) {

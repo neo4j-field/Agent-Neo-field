@@ -37,8 +37,15 @@ This is the backend for the Agent Neo project, designed to interact with various
     ```bash
    poetry install
     ```
-3. Set up environment variables:
-
+3. Install pre-commit hooks
+   ```bash
+   poetry run pre-commit install
+   ```
+4. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   ```
+5. Run development backend webserver
     ```bash
     poetry run uvicorn main:app --reload
     ```

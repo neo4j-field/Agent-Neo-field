@@ -1,11 +1,10 @@
 import unittest
-from typing import List
 
 from fastapi.testclient import TestClient
-
-from main import app
 from routers.llm import get_writer
 from tests.test_llm_route import GraphWriterMock
+
+from main import app
 
 client = TestClient(app)
 
@@ -18,6 +17,8 @@ app.dependency_overrides[get_writer] = override_get_writer
 
 
 class TestRatingRoute(unittest.TestCase):
+    rating: dict[str, str]
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.rating = {

@@ -10,7 +10,7 @@ import remarkGfm from 'remark-gfm';
 
 import { fetchWithAuth } from '../api/api';  // Correctly import fetchWithAuth
 
-function ChatInterface({ conversationId }: { conversationId: string }) {
+function ChatInterface({ conversationId, onFetchConversationData }: { conversationId: string, onFetchConversationData: () => void }) {
 
     const {settings} = useContext(AppContext) as { settings: Settings };
 
@@ -48,6 +48,9 @@ function ChatInterface({ conversationId }: { conversationId: string }) {
 
         setMessageHistory(prevHistory => responseData.message_history || prevHistory);
         setIsResponseOk(true);
+
+        onFetchConversationData();
+
         return responseData.content;
     } catch (error) {
         console.error("API call failed:", error);
@@ -198,13 +201,3 @@ function ChatInterface({ conversationId }: { conversationId: string }) {
 }
 
 export default ChatInterface;
-
-
-
-
-
-
-
-
-
-

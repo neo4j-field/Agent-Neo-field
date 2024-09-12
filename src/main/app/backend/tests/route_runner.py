@@ -1,6 +1,5 @@
 import unittest
 
-
 mods = ["test_llm_route", "test_rating_route"]
 # initialize the test suite
 loader = unittest.TestLoader()

@@ -1,15 +1,29 @@
-import os
 import json
-from google.cloud import secretmanager
-from dotenv import load_dotenv
-
+import os
 from abc import ABC, abstractmethod
+
+from dotenv import find_dotenv, load_dotenv
+from google.cloud import secretmanager
 
 
 class SecretManager(ABC):
     @abstractmethod
     def access_secret_version(self, secret_id, version_id="latest"):
         pass
+
+    @classmethod
+    def from_auto(cls):
+        env_path = find_dotenv()
+        if env_path:
+            return EnvSecretManager(env_path=env_path)
+        else:
+            project_id = os.getenv("GOOGLE_PROJECT_ID")
+            if project_id:
+                return GoogleSecretManager(project_id=project_id)
+            else:
+                raise EnvironmentError(
+                    "Neither .env file found nor GOOGLE_PROJECT_ID set in environment variables."
+                )
 
 
 class EnvSecretManager(SecretManager):

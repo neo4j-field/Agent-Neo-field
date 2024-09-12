@@ -1,11 +1,11 @@
-import abc
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 from typing import Any, List
 
+
 class BaseFetcher(ABC):
-    def __init__(self):
-        self._storage_client = None
-        self._secret_manager_client = None
+    def __init__(self, storage_client=None, secret_client=None):
+        self._storage_client = storage_client
+        self._secret_manager_client = secret_client
 
     @abstractmethod
     def storage_client(self):
